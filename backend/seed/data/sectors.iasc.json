@@ -1,0 +1,13 @@
+[
+  { "name": "Camp Coordination & Camp Management", "code": "CCCM", "color": "#b45309", "description": "IASC global cluster: displacement site coordination and management" },
+  { "name": "Early Recovery", "code": "ERY", "color": "#0d9488", "description": "IASC global cluster: restoring basic services and livelihoods" },
+  { "name": "Education", "code": "EDU", "color": "#9333ea", "description": "IASC global cluster: education in emergencies" },
+  { "name": "Emergency Telecommunications", "code": "ETC", "color": "#ca8a04", "description": "IASC global cluster: shared communications services" },
+  { "name": "Food Security", "code": "FSC", "color": "#15803d", "description": "IASC global cluster: food assistance and agriculture" },
+  { "name": "Health", "code": "HLT", "color": "#dc2626", "description": "IASC global cluster: health response" },
+  { "name": "Logistics", "code": "LOG", "color": "#0369a1", "description": "IASC global cluster: supply chain and transport" },
+  { "name": "Nutrition", "code": "NUT", "color": "#c2410c", "description": "IASC global cluster: nutrition response" },
+  { "name": "Protection", "code": "PRO", "color": "#1d4ed8", "description": "IASC global cluster: protection of affected populations" },
+  { "name": "Shelter", "code": "SHL", "color": "#be185d", "description": "IASC global cluster: emergency shelter and NFIs" },
+  { "name": "Water, Sanitation & Hygiene", "code": "WASH", "color": "#0891b2", "description": "IASC global cluster: WASH services" }
+]

@@ -1,0 +1,7 @@
+[
+  { "name": "Environment & Natural Resources", "code": "ENV", "color": "#009E73", "description": "Environment, conservation and natural resources" },
+  { "name": "Social & Health", "code": "SOC", "color": "#D55E00", "description": "Social welfare, health, family and community support" },
+  { "name": "Rights & Governance", "code": "RGT", "color": "#0072B2", "description": "Human rights, democracy, governance and advocacy" },
+  { "name": "Youth, Sports & Culture", "code": "YSC", "color": "#E69F00", "description": "Youth development, sports, arts and culture" },
+  { "name": "Faith Based", "code": "FBO", "color": "#CC79A7", "description": "Faith-based organisations and ministries" }
+]

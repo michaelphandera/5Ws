@@ -1,0 +1,62 @@
+{
+  "levels": [
+    { "level": 1, "name": "Region" },
+    { "level": 2, "name": "District" }
+  ],
+  "regions": [
+    {
+      "name": "Mahé",
+      "code": "SC-MAHE",
+      "centroid": { "lat": -4.67, "lng": 55.47 },
+      "districts": [
+        { "name": "Anse aux Pins", "code": "SC-MAHE-AAP", "centroid": { "lat": -4.69, "lng": 55.515 } },
+        { "name": "Anse Boileau", "code": "SC-MAHE-ABO", "centroid": { "lat": -4.715, "lng": 55.485 } },
+        { "name": "Anse Etoile", "code": "SC-MAHE-AET", "centroid": { "lat": -4.59, "lng": 55.455 } },
+        { "name": "Anse Royale", "code": "SC-MAHE-ARO", "centroid": { "lat": -4.74, "lng": 55.51 } },
+        { "name": "Au Cap", "code": "SC-MAHE-AUC", "centroid": { "lat": -4.71, "lng": 55.5 } },
+        { "name": "Baie Lazare", "code": "SC-MAHE-BLA", "centroid": { "lat": -4.745, "lng": 55.485 } },
+        { "name": "Beau Vallon", "code": "SC-MAHE-BVA", "centroid": { "lat": -4.615, "lng": 55.435 } },
+        { "name": "Bel Air", "code": "SC-MAHE-BAI", "centroid": { "lat": -4.625, "lng": 55.45 } },
+        { "name": "Bel Ombre", "code": "SC-MAHE-BOM", "centroid": { "lat": -4.62, "lng": 55.415 } },
+        { "name": "Cascade", "code": "SC-MAHE-CAS", "centroid": { "lat": -4.65, "lng": 55.49 } },
+        { "name": "English River", "code": "SC-MAHE-ERI", "centroid": { "lat": -4.615, "lng": 55.455 } },
+        { "name": "Glacis", "code": "SC-MAHE-GLA", "centroid": { "lat": -4.58, "lng": 55.44 } },
+        { "name": "Grand'Anse Mahé", "code": "SC-MAHE-GAM", "centroid": { "lat": -4.665, "lng": 55.46 } },
+        { "name": "Ile Perseverance", "code": "SC-MAHE-IPE", "centroid": { "lat": -4.595, "lng": 55.47 } },
+        { "name": "Les Mamelles", "code": "SC-MAHE-LMA", "centroid": { "lat": -4.635, "lng": 55.47 } },
+        { "name": "Mont Buxton", "code": "SC-MAHE-MBU", "centroid": { "lat": -4.62, "lng": 55.445 } },
+        { "name": "Mont Fleuri", "code": "SC-MAHE-MFL", "centroid": { "lat": -4.635, "lng": 55.455 } },
+        { "name": "Plaisance", "code": "SC-MAHE-PLA", "centroid": { "lat": -4.64, "lng": 55.46 } },
+        { "name": "Pointe La Rue", "code": "SC-MAHE-PLR", "centroid": { "lat": -4.675, "lng": 55.52 } },
+        { "name": "Port Glaud", "code": "SC-MAHE-PGL", "centroid": { "lat": -4.655, "lng": 55.42 } },
+        { "name": "Roche Caiman", "code": "SC-MAHE-RCA", "centroid": { "lat": -4.635, "lng": 55.475 } },
+        { "name": "Saint Louis", "code": "SC-MAHE-SLO", "centroid": { "lat": -4.62, "lng": 55.44 } },
+        { "name": "Takamaka", "code": "SC-MAHE-TAK", "centroid": { "lat": -4.76, "lng": 55.495 } }
+      ]
+    },
+    {
+      "name": "Praslin",
+      "code": "SC-PRAS",
+      "centroid": { "lat": -4.33, "lng": 55.73 },
+      "districts": [
+        { "name": "Baie Sainte Anne", "code": "SC-PRAS-BSA", "centroid": { "lat": -4.35, "lng": 55.76 } },
+        { "name": "Grand'Anse Praslin", "code": "SC-PRAS-GAP", "centroid": { "lat": -4.33, "lng": 55.7 } },
+        { "name": "Anse Kerlan", "code": "SC-PRAS-AKE", "centroid": { "lat": -4.305, "lng": 55.685 } }
+      ]
+    },
+    {
+      "name": "La Digue & Inner Islands",
+      "code": "SC-LDIG",
+      "centroid": { "lat": -4.36, "lng": 55.84 },
+      "districts": [
+        { "name": "La Digue", "code": "SC-LDIG-LDI", "centroid": { "lat": -4.36, "lng": 55.835 } }
+      ]
+    },
+    {
+      "name": "Outer Islands",
+      "code": "SC-OUTI",
+      "centroid": { "lat": -6.5, "lng": 52.0 },
+      "districts": []
+    }
+  ]
+}

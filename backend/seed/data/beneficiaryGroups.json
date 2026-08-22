@@ -1,0 +1,9 @@
+[
+  { "name": "Children", "ageMax": 17 },
+  { "name": "Youth", "ageMin": 15, "ageMax": 35 },
+  { "name": "Women", "gender": "female", "ageMin": 18 },
+  { "name": "Men", "gender": "male", "ageMin": 18 },
+  { "name": "Persons with Disabilities" },
+  { "name": "Elderly", "ageMin": 60 },
+  { "name": "General Population" }
+]
