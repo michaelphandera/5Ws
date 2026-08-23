@@ -52,6 +52,12 @@ async function buildSummary(q) {
   // 2) Activity aggregation, scoped to the filtered projects (+ activity-level filters).
   const aFilter = { project: { $in: projects.map((p) => p._id) } };
   if (q.sector) aFilter.sector = oid(q.sector);
+  // For Whom — activities targeting a disaggregation category (or the generic
+  // female/male group split). Key sanitized before use as a path.
+  if (q.demographic) {
+    const key = String(q.demographic).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (key) aFilter[`beneficiaries.disaggregation.targeted.${key}`] = { $gt: 0 };
+  }
   if (q.location) {
     // One id or a comma-separated list — filter matches the union of subtrees.
     const locIds = String(q.location).split(',').map((x) => x.trim()).filter(Boolean);
@@ -120,7 +126,7 @@ async function buildSummary(q) {
   const t = facets.totals[0] || { activities: 0, projects: [] };
 
   // Activity-level filters narrow the project set for the project charts too.
-  if (q.sector || q.location) {
+  if (q.sector || q.location || q.demographic) {
     const matched = new Set(t.projects.map((id) => id.toString()));
     projects = projects.filter((p) => matched.has(p._id.toString()));
   }

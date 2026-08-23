@@ -5,7 +5,12 @@ import { computed } from 'vue';
 
 const props = defineProps({
   demographics: { type: Object, required: true }, // {categories, targeted}
+  // Rows emit `select` with { key, label } on click; activeKey highlights the applied filter.
+  clickable: { type: Boolean, default: false },
+  activeKey: { type: String, default: '' },
 });
+
+const emit = defineEmits(['select']);
 
 const GENDER_COLORS = { female: '#a23a82', male: '#1d5fad', other: '#0f766e', null: '#64748b' };
 
@@ -49,7 +54,16 @@ const stats = computed(() => {
         <div v-if="stats.pctChildren != null"><b>{{ stats.pctChildren }}%</b> children</div>
       </div>
 
-      <div v-for="r in rows" :key="r.key" class="demo-row">
+      <component
+        :is="clickable ? 'button' : 'div'"
+        v-for="r in rows"
+        :key="r.key"
+        class="demo-row"
+        :class="{ 'demo-click': clickable, 'demo-active': activeKey && activeKey === r.key }"
+        :type="clickable ? 'button' : undefined"
+        :title="clickable ? `Filter by ${r.label}` : undefined"
+        @click="clickable && emit('select', { key: r.key, label: r.label })"
+      >
         <div class="demo-label">
           <span class="gdot" :style="{ background: r.color }"></span>
           {{ r.label }}
@@ -59,7 +73,7 @@ const stats = computed(() => {
           <div class="fill" :style="{ width: (r.targeted / maxVal) * 100 + '%', background: r.color }"></div>
         </div>
         <div class="demo-nums">{{ r.targeted.toLocaleString() }}</div>
-      </div>
+      </component>
 
       <div class="demo-legend muted">
         <span><span class="gdot" style="background: #a23a82"></span>Female</span>
@@ -80,6 +94,15 @@ const stats = computed(() => {
   display: grid; grid-template-columns: 168px 1fr 96px;
   gap: 10px; align-items: center; margin-bottom: 8px; font-size: 12.5px;
 }
+/* Rows double as filter toggles when the card is clickable. */
+button.demo-row {
+  background: none; border: none; font: inherit; text-align: inherit;
+  cursor: pointer; width: 100%; padding: 2px 4px; margin: 0 -4px 6px;
+  border-radius: 6px;
+}
+.demo-click:hover { background: var(--gray-100, #f1f4f8); }
+.demo-active { background: rgba(29, 95, 173, 0.08); }
+.demo-active .demo-label { color: var(--ink, #17263c); }
 .demo-label { color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .gdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .demo-bar { position: relative; height: 14px; background: var(--gray-100); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }

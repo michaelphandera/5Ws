@@ -12,6 +12,7 @@ export const useDashboardStore = defineStore('dashboard', {
       dateFrom: '',
       dateTo: '',
       event: '',
+      demographic: '',
     },
     summary: null,
     loading: false,

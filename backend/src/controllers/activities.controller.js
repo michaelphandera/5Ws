@@ -38,6 +38,12 @@ async function buildActivityFilter(query) {
     const ids = await Project.find(pf).select('_id').lean();
     filter.project = { $in: ids.map((p) => p._id) };
   }
+  // For Whom — activities that target a disaggregation category (or the
+  // generic female/male group split). Key is sanitized before use as a path.
+  if (query.demographic) {
+    const key = String(query.demographic).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (key) filter[`beneficiaries.disaggregation.targeted.${key}`] = { $gt: 0 };
+  }
   if (query.location) {
     const ids = await resolveSubtreeIds(query.location);
     filter.locations = { $in: ids };

@@ -96,6 +96,10 @@ function toggleEvent(row) {
 function onEventSelect({ index }) {
   toggleEvent(s.value?.byEvent?.[index]);
 }
+function onDemographicSelect({ key }) {
+  dash.filters.demographic = dash.filters.demographic === key ? '' : key;
+  dash.fetchSummary();
+}
 function toggleOrganization(org) {
   if (!org?._id) return;
   dash.filters.organization = String(dash.filters.organization) === String(org._id) ? '' : org._id;
@@ -207,8 +211,13 @@ async function exportSnapshot(kind) {
           </div>
           <div class="card">
             <div class="card-title">Who is targeted — demographics</div>
-            <div class="card-sub">For Whom — targeted beneficiaries by disaggregation category</div>
-            <DemographicsCard :demographics="s.demographics" />
+            <div class="card-sub">For Whom — targeted beneficiaries by disaggregation category · click to filter</div>
+            <DemographicsCard
+              :demographics="s.demographics"
+              clickable
+              :activeKey="dash.filters.demographic"
+              @select="onDemographicSelect"
+            />
           </div>
         </div>
       </div>

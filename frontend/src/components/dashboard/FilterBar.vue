@@ -63,6 +63,15 @@ function changed() {
           <option v-for="ev in lookups.events" :key="ev._id" :value="ev._id">{{ ev.name }}</option>
         </select>
       </label>
+      <label class="field">
+        <span>For Whom — demographic</span>
+        <select v-model="dash.filters.demographic" @change="changed">
+          <option value="">All</option>
+          <option v-for="c in lookups.disaggregations" :key="c.key" :value="c.key">{{ c.label }}</option>
+          <option value="female">Female (group split)</option>
+          <option value="male">Male (group split)</option>
+        </select>
+      </label>
       <button class="btn" @click="dash.resetFilters()">Reset</button>
     </div>
   </div>
