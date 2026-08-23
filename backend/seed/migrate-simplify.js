@@ -1,4 +1,7 @@
-/* Migration (safe to re-run): 2026-08-19 simplification.
+/* HISTORICAL migration — do NOT run after migrate-rev1.js: step 4 below
+   unsets drmPhase, which the REV1 round reintroduced on activities.
+
+   Migration (safe to re-run): 2026-08-19 simplification.
    1. Beneficiaries: plannedTotal -> targetedTotal, drop reachedTotal;
       disaggregation.planned -> disaggregation.targeted, drop .reached.
    2. Status 'suspended' -> 'planned' on projects and activities (option removed).

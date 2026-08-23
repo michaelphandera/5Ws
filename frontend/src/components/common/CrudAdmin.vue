@@ -1,7 +1,8 @@
 <script setup>
 // Generic master-data admin: list + modal form + delete, driven by a field spec.
-// Field spec: { key, label, type: 'text'|'textarea'|'select'|'color'|'number'|'list', options?, required? }
+// Field spec: { key, label, type: 'text'|'textarea'|'select'|'multiselect'|'color'|'number'|'list', options?, required? }
 // 'list' renders a text input holding a comma-separated string <-> array field.
+// 'multiselect' renders a multiple <select> bound to an array of ids.
 import { ref, onMounted } from 'vue';
 import api from '../../api/client';
 import ConfirmDialog from './ConfirmDialog.vue';
@@ -11,7 +12,7 @@ import Pager from './Pager.vue';
 import { useLookupsStore } from '../../stores/lookups';
 import { useToast } from '../../composables/toast';
 import { useClientTable } from '../../composables/clientTable';
-import { downloadCsv } from '../../utils/csv';
+import { downloadCsv, exportFilename } from '../../utils/csv';
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -45,8 +46,13 @@ const { q, page, pages, filtered, paged } = useClientTable(items, {
 });
 
 function exportCsv() {
+  // 'inform-components' -> 'Inform_Components' for the standard filename.
+  const descriptor = props.resource
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('_');
   downloadCsv(
-    `${props.resource}.csv`,
+    exportFilename(descriptor, 'csv'),
     props.columns.map((c) => c.label),
     filtered.value.map((item) => props.columns.map((c) => cellValue(item, c)))
   );
@@ -54,7 +60,7 @@ function exportCsv() {
 
 function openNew() {
   const blank = {};
-  for (const f of props.fields) blank[f.key] = f.type === 'number' ? null : '';
+  for (const f of props.fields) blank[f.key] = f.type === 'multiselect' ? [] : f.type === 'number' ? null : '';
   editing.value = blank;
   error.value = '';
 }
@@ -64,9 +70,10 @@ function openEdit(item) {
   for (const f of props.fields) {
     let v = item[f.key];
     if (f.type === 'list' && Array.isArray(v)) v = v.join(', ');
+    else if (f.type === 'multiselect') v = (v || []).map((x) => x?._id || x);
     else if (v && typeof v === 'object' && v._id) v = v._id;
     if (f.type === 'date' && v) v = String(v).slice(0, 10);
-    copy[f.key] = v ?? '';
+    copy[f.key] = v ?? (f.type === 'multiselect' ? [] : '');
   }
   copy._id = item._id;
   editing.value = copy;
@@ -186,6 +193,9 @@ function cellValue(item, col) {
               <textarea v-if="f.type === 'textarea'" v-model="editing[f.key]" rows="3" :required="f.required" />
               <select v-else-if="f.type === 'select'" v-model="editing[f.key]" :required="f.required">
                 <option value="">—</option>
+                <option v-for="o in f.options()" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+              <select v-else-if="f.type === 'multiselect'" v-model="editing[f.key]" multiple size="5">
                 <option v-for="o in f.options()" :key="o.value" :value="o.value">{{ o.label }}</option>
               </select>
               <input v-else-if="f.type === 'color'" v-model="editing[f.key]" type="color" style="height: 38px; padding: 3px" />

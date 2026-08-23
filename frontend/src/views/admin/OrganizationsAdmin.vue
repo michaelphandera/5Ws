@@ -18,8 +18,10 @@ const columns = [
   { key: 'name', label: 'Name' },
   { key: 'acronym', label: 'Acronym' },
   { key: 'type', label: 'Type', render: (o) => orgTypeLabel(o.type) },
-  { key: 'commission', label: 'Commission / Sector' },
-  { key: 'chairperson', label: 'Chairperson' },
+  { key: 'registrationNo', label: 'Reg. No.' },
+  { key: 'commission', label: 'Primary sector' },
+  { key: 'hqDistrict', label: 'HQ district' },
+  { key: 'contactPerson', label: 'Contact' },
   { key: 'emails', label: 'Email', render: (o) => (o.emails || []).join(', ') },
   { key: 'phones', label: 'Phone', render: (o) => (o.phones || []).join(', ') },
   { key: 'location', label: 'Map point', render: (o) => (o.location?.lat != null ? '✓' : '') },
@@ -34,21 +36,39 @@ const fields = [
     required: true,
     options: () => ORG_TYPES,
   },
+  { key: 'registrationNo', label: 'Registration No. (Registrar of Associations)' },
+  {
+    key: 'hqDistrict',
+    label: 'HQ district',
+    type: 'select',
+    options: () =>
+      lookups.locations
+        .filter((l) => l.level === 2 && l.active !== false)
+        .map((l) => ({ value: l._id, label: `${l.name}${l.code ? ` (${l.code})` : ''}` })),
+  },
   { key: 'aim', label: 'Aim', type: 'textarea' },
   { key: 'description', label: 'Description (public-facing)', type: 'textarea' },
   { key: 'dateFounded', label: 'Date founded' },
   { key: 'chairperson', label: 'Chairperson' },
+  { key: 'contactPerson', label: 'Contact person' },
   { key: 'emails', label: 'Emails (comma-separated)', type: 'list' },
   { key: 'phones', label: 'Phones (comma-separated)', type: 'list' },
   { key: 'postalAddress', label: 'Postal address' },
   { key: 'physicalAddress', label: 'Physical address' },
-  { key: 'webpage', label: 'Webpage' },
+  { key: 'webpage', label: 'Website / social' },
   {
     key: 'commission',
-    label: 'Commission / Sector',
+    label: 'Primary sector (commission)',
     type: 'select',
     options: () => lookups.sectors.map((s) => ({ value: s._id, label: s.name })),
   },
+  {
+    key: 'otherSectors',
+    label: 'Also works in (hold Ctrl to select several)',
+    type: 'multiselect',
+    options: () => lookups.sectors.map((s) => ({ value: s._id, label: s.name })),
+  },
+  { key: 'notes', label: 'Notes', type: 'textarea' },
 ];
 </script>
 

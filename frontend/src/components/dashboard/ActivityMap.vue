@@ -20,8 +20,11 @@ const props = defineProps({
   levels: { type: Array, default: null }, // [{level, name}]
   // Optional org-point overlay: [{_id, name, acronym, type, commission, location:{lat,lng}}]
   orgMarkers: { type: Array, default: () => [] },
-  // false on the public page: hides "Filter dashboard" / "View profile" actions.
+  // false hides the "Filter dashboard" popup action.
   interactive: { type: Boolean, default: true },
+  // Org "View profile" links go to an authenticated route — the public page
+  // turns them off while keeping the map interactive. null follows `interactive`.
+  orgActions: { type: Boolean, default: null },
   // Force the starting admin level (e.g. 2 = districts on the public page);
   // falls back to the smallest renderable level when null or not renderable.
   startLevel: { type: Number, default: null },
@@ -33,6 +36,8 @@ const props = defineProps({
 const emit = defineEmits(['select-location', 'select-org']);
 
 const lookups = useLookupsStore();
+
+const orgActionsOn = computed(() => props.orgActions ?? props.interactive);
 
 const METRICS = [
   { key: 'count', label: 'Projects' },
@@ -151,11 +156,11 @@ function renderOrgs() {
         <b>${esc(o.name)}</b>${o.acronym ? ` <span class="pu-muted">${esc(o.acronym)}</span>` : ''}
         <div class="pu-line">${esc(orgTypeLabel(o.type))}</div>
         ${sectorChip}
-        ${props.interactive ? `<div class="pu-actions"><a href="#" data-org="${o._id}">View profile ›</a></div>` : ''}
+        ${orgActionsOn.value ? `<div class="pu-actions"><a href="#" data-org="${o._id}">View profile ›</a></div>` : ''}
       </div>`,
       { maxWidth: 280 }
     );
-    if (props.interactive) {
+    if (orgActionsOn.value) {
       marker.on('popupopen', (e) => {
         const a = e.popup.getElement()?.querySelector('a[data-org]');
         if (a) {

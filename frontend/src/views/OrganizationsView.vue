@@ -9,7 +9,7 @@ import Pager from '../components/common/Pager.vue';
 import ExportMenu from '../components/common/ExportMenu.vue';
 import { useLookupsStore } from '../stores/lookups';
 import { useClientTable } from '../composables/clientTable';
-import { downloadCsv } from '../utils/csv';
+import { downloadCsv, exportFilename } from '../utils/csv';
 import { ORG_TYPES, orgTypeLabel } from '../utils/orgTypes';
 
 const lookups = useLookupsStore();
@@ -46,7 +46,7 @@ const { q, page, pages, filtered, paged } = useClientTable(visible, {
 
 function exportCsv() {
   downloadCsv(
-    'organizations.csv',
+    exportFilename('Organizations', 'csv'),
     ['Name', 'Acronym', 'Type', 'Commission / Sector', 'Email', 'Phone', 'Webpage'],
     filtered.value.map((o) => [
       o.name,
@@ -84,9 +84,9 @@ function downloadServerFile(path, filename) {
         <SearchBox v-model="q" placeholder="Search organizations…" />
         <ExportMenu
           :items="[
-            { label: 'Excel (.xlsx)', run: () => downloadServerFile('/export/organizations.xlsx', '5ws-organizations.xlsx') },
+            { label: 'Excel (.xlsx)', run: () => downloadServerFile('/export/organizations.xlsx', exportFilename('Organizations', 'xlsx')) },
             { label: 'CSV (.csv)', run: exportCsv },
-            { label: 'Google Earth (.kml)', icon: 'globe', run: () => downloadServerFile('/export/organizations.kml', '5ws-organizations.kml') },
+            { label: 'Google Earth (.kml)', icon: 'globe', run: () => downloadServerFile('/export/organizations.kml', exportFilename('Organizations', 'kml')) },
           ]"
         />
       </div>

@@ -9,7 +9,8 @@ import { useAuthStore } from '../stores/auth';
 import { useLookupsStore } from '../stores/lookups';
 import { useToast } from '../composables/toast';
 import { useClientTable } from '../composables/clientTable';
-import { downloadCsv } from '../utils/csv';
+import { downloadCsv, exportFilename } from '../utils/csv';
+import { DRM_PHASES, drmPhaseLabel } from '../utils/drm';
 
 const toast = useToast();
 
@@ -25,6 +26,20 @@ const filterStatus = ref('');
 const CURRENCIES = ['SCR', 'USD', 'EUR'];
 
 const canCreate = computed(() => auth.isAdmin || auth.user?.role === 'org');
+
+// Collapsible Disaster / Emergency & DRM context section — always starts
+// collapsed (label only); the Show button reveals the fields.
+const showDrm = ref(false);
+
+// INFORM components grouped by dimension for the <optgroup> select.
+const informByDimension = computed(() => {
+  const groups = new Map();
+  for (const c of lookups.informComponents.filter((x) => x.active !== false)) {
+    if (!groups.has(c.dimension)) groups.set(c.dimension, []);
+    groups.get(c.dimension).push(c);
+  }
+  return [...groups.entries()];
+});
 
 const { q, page, pages, filtered, paged } = useClientTable(projects, {
   searchText: (p) =>
@@ -43,8 +58,8 @@ const { q, page, pages, filtered, paged } = useClientTable(projects, {
 
 function exportCsv() {
   downloadCsv(
-    'projects.csv',
-    ['Title', 'Implementing organization', 'Partner organizations', 'Status', 'Start', 'End', 'Budget', 'Currency', 'Funding sources', 'Disaster event'],
+    exportFilename('Projects', 'csv'),
+    ['Title', 'Implementing organization', 'Partner organizations', 'Status', 'Start', 'End', 'Budget', 'Currency', 'Funding sources', 'Disaster event', 'DRM phase', 'INFORM component', 'Data source'],
     filtered.value.map((p) => [
       p.title,
       p.organization?.name || '',
@@ -56,6 +71,9 @@ function exportCsv() {
       p.budget?.currency || '',
       (p.fundingSources || []).map((o) => o?.name).filter(Boolean).join('; '),
       p.event?.name || '',
+      drmPhaseLabel(p.drmPhase),
+      p.informComponent?.name || '',
+      p.dataSource || '',
     ])
   );
 }
@@ -142,10 +160,14 @@ function openNew() {
     endDate: '',
     status: 'planned',
     event: '',
+    drmPhase: '',
+    informComponent: '',
+    dataSource: '',
     budgetAmount: '',
     budgetCurrency: 'SCR',
     fundingSources: [],
   };
+  showDrm.value = false;
   error.value = '';
   draftOpened();
 }
@@ -161,10 +183,14 @@ function openEdit(p) {
     endDate: p.endDate?.slice(0, 10) || '',
     status: p.status || 'planned',
     event: p.event?._id || p.event || '',
+    drmPhase: p.drmPhase || '',
+    informComponent: p.informComponent?._id || p.informComponent || '',
+    dataSource: p.dataSource || '',
     budgetAmount: p.budget?.amount ?? '',
     budgetCurrency: p.budget?.currency || 'SCR',
     fundingSources: (p.fundingSources || []).map((o) => o._id || o),
   };
+  showDrm.value = false;
   error.value = '';
   draftOpened();
 }
@@ -179,6 +205,9 @@ async function save() {
     endDate: e.endDate || undefined,
     status: e.status,
     event: e.event || null,
+    drmPhase: e.drmPhase || null,
+    informComponent: e.informComponent || null,
+    dataSource: e.dataSource || null,
     budget: e.budgetAmount !== '' ? { amount: Number(e.budgetAmount), currency: e.budgetCurrency } : undefined,
     fundingSources: e.fundingSources,
     implementingPartners: e.implementingPartners,
@@ -319,15 +348,46 @@ const fmt = (d) => (d ? d.slice(0, 10) : '—');
               </select>
             </label>
           </div>
-          <label class="field">
-            <span>Disaster / Emergency context <span class="hint">(if any)</span></span>
-            <select v-model="editing.event">
-              <option value="">None — regular programming</option>
-              <option v-for="ev in lookups.events.filter((x) => x.active !== false)" :key="ev._id" :value="ev._id">
-                {{ ev.name }}{{ ev.glideNumber ? ` (${ev.glideNumber})` : '' }}
-              </option>
-            </select>
-          </label>
+          <div class="drm-section">
+            <div class="form-section-title" style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <span>Disaster / Emergency &amp; DRM context <span class="hint" style="font-weight: 400">(if any)</span></span>
+              <button type="button" class="btn btn-sm" @click="showDrm = !showDrm">{{ showDrm ? 'Hide' : 'Show' }}</button>
+            </div>
+            <template v-if="showDrm">
+            <p class="card-sub" style="margin-top: 0">The emergency this project responds to, what it does for disaster risk, and data provenance</p>
+            <label class="field">
+              <span>Disaster / Emergency event</span>
+              <select v-model="editing.event">
+                <option value="">None — regular programming</option>
+                <option v-for="ev in lookups.events.filter((x) => x.active !== false)" :key="ev._id" :value="ev._id">
+                  {{ ev.name }}{{ ev.glideNumber ? ` (${ev.glideNumber})` : '' }}
+                </option>
+              </select>
+            </label>
+            <div class="form-grid">
+              <label class="field">
+                <span>DRM phase</span>
+                <select v-model="editing.drmPhase">
+                  <option value="">—</option>
+                  <option v-for="p in DRM_PHASES" :key="p.value" :value="p.value">{{ p.label }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Hazard / INFORM component addressed</span>
+                <select v-model="editing.informComponent">
+                  <option value="">—</option>
+                  <optgroup v-for="[dim, comps] in informByDimension" :key="dim" :label="dim">
+                    <option v-for="c in comps" :key="c._id" :value="c._id">{{ c.category }} — {{ c.name }}</option>
+                  </optgroup>
+                </select>
+              </label>
+            </div>
+            <label class="field">
+              <span>Data source / verified by <span class="hint">(where the figures come from / who verified them)</span></span>
+              <input v-model="editing.dataSource" placeholder="e.g. DRDM sitrep, organisation self-report" />
+            </label>
+            </template>
+          </div>
           <div class="form-grid">
             <label class="field"><span>Budget amount</span><input v-model="editing.budgetAmount" v-decimal type="number" min="0" step="any" inputmode="decimal" /></label>
             <label class="field">
@@ -351,3 +411,16 @@ const fmt = (d) => (d ? d.slice(0, 10) : '—');
     </div>
   </div>
 </template>
+
+<style scoped>
+/* One visual group for the Disaster / Emergency & DRM context fields. */
+.drm-section {
+  border: 1px solid var(--border, #e3e8ef);
+  border-left: 3px solid var(--blue-600, #1d5fad);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 4px 0 14px;
+}
+.drm-section .form-section-title { margin-bottom: 0; }
+.drm-section .card-sub { margin-top: 6px; }
+</style>

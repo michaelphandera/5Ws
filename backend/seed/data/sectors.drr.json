@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Disaster Risk Reduction & Preparedness",
+    "code": "DRR",
+    "color": "#4338ca",
+    "description": "Risk reduction, preparedness, early warning and contingency planning"
+  },
+  {
+    "name": "Climate Change Adaptation & Resilience",
+    "code": "CCA",
+    "color": "#3f6212",
+    "description": "Adaptation, resilience-building and climate risk management"
+  },
+  {
+    "name": "Livelihoods & Economic Recovery",
+    "code": "LIV",
+    "color": "#92400e",
+    "description": "Livelihoods support and local economic recovery"
+  }
+]

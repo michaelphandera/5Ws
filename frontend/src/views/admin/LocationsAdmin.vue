@@ -8,7 +8,7 @@ import Pager from '../../components/common/Pager.vue';
 import { useLookupsStore } from '../../stores/lookups';
 import { useToast } from '../../composables/toast';
 import { useClientTable } from '../../composables/clientTable';
-import { downloadCsv } from '../../utils/csv';
+import { downloadCsv, exportFilename } from '../../utils/csv';
 
 const toast = useToast();
 
@@ -44,16 +44,22 @@ const { q, page, pages, filtered, paged } = useClientTable(flatRows, {
 
 function exportCsv() {
   downloadCsv(
-    'locations.csv',
-    ['Name', 'P-code', 'Level', 'Centroid lat', 'Centroid lng', 'Has boundary', 'Active'],
+    exportFilename('Locations', 'csv'),
+    ['Name', 'P-code', 'Level', 'ISO 3166-2', 'INFORM ADM1', 'INFORM ADM2', 'Plus Code', 'Status', 'Centroid lat', 'Centroid lng', 'Has boundary', 'Active', 'Notes'],
     filtered.value.map((n) => [
       n.name,
       n.code || '',
       levelName(n.level),
+      n.isoCode || '',
+      n.informAdm1 || '',
+      n.informAdm2 || '',
+      n.plusCode || '',
+      n.provisional ? 'Provisional' : 'Active',
       n.centroid?.lat ?? '',
       n.centroid?.lng ?? '',
       n.geometry ? 'yes' : 'no',
       n.active === false ? 'inactive' : 'active',
+      n.notes || '',
     ])
   );
 }
@@ -80,6 +86,12 @@ function openEdit(node) {
     lng: node.centroid?.lng ?? '',
     geometryText: node.geometry ? JSON.stringify(node.geometry) : '',
     active: node.active !== false,
+    isoCode: node.isoCode || '',
+    informAdm1: node.informAdm1 || '',
+    informAdm2: node.informAdm2 || '',
+    plusCode: node.plusCode || '',
+    provisional: node.provisional === true,
+    notes: node.notes || '',
   };
   error.value = '';
 }
@@ -104,6 +116,12 @@ async function save() {
   try {
     if (editing.value._id) {
       body.active = editing.value.active;
+      body.isoCode = editing.value.isoCode;
+      body.informAdm1 = editing.value.informAdm1;
+      body.informAdm2 = editing.value.informAdm2;
+      body.plusCode = editing.value.plusCode;
+      body.provisional = editing.value.provisional;
+      body.notes = editing.value.notes;
       await api.put(`/locations/${editing.value._id}`, body);
     } else {
       body.parent = editing.value.parent;
@@ -192,6 +210,9 @@ function removeLevel() {
             <th>Name</th>
             <th>P-code</th>
             <th>Level</th>
+            <th>ISO 3166-2</th>
+            <th>INFORM</th>
+            <th>Status</th>
             <th>Centroid</th>
             <th>Boundary</th>
             <th style="width: 210px"></th>
@@ -206,6 +227,12 @@ function removeLevel() {
             </td>
             <td class="muted">{{ node.code }}</td>
             <td>{{ levelName(node.level) }}</td>
+            <td class="muted">{{ node.isoCode || '—' }}</td>
+            <td class="muted">{{ [node.informAdm1, node.informAdm2].filter(Boolean).join(' / ') || '—' }}</td>
+            <td>
+              <span v-if="node.provisional" class="chip" style="background:#fef3c7;color:#92400e">Provisional</span>
+              <span v-else class="muted">Active</span>
+            </td>
             <td class="muted">
               {{ node.centroid?.lat != null ? `${node.centroid.lat}, ${node.centroid.lng}` : '—' }}
             </td>
@@ -245,9 +272,35 @@ function removeLevel() {
               <input v-model="editing.lng" type="number" step="any" />
             </label>
           </div>
+          <div v-if="editing._id" class="form-grid">
+            <label class="field">
+              <span>ISO 3166-2 code</span>
+              <input v-model="editing.isoCode" placeholder="e.g. SC-08" />
+            </label>
+            <label class="field">
+              <span>Plus Code (OLC)</span>
+              <input v-model="editing.plusCode" placeholder="10-character Plus Code" />
+            </label>
+            <label class="field">
+              <span>INFORM ADM1 P-code</span>
+              <input v-model="editing.informAdm1" placeholder="SC1–SC4" />
+            </label>
+            <label class="field">
+              <span>INFORM ADM2 P-code</span>
+              <input v-model="editing.informAdm2" placeholder="e.g. SC26, or TO CONFIRM" />
+            </label>
+          </div>
+          <label v-if="editing._id" class="field">
+            <span>Notes</span>
+            <textarea v-model="editing.notes" rows="2" />
+          </label>
           <label class="field">
             <span>Boundary GeoJSON geometry (optional — enables choropleth on the map)</span>
             <textarea v-model="editing.geometryText" rows="4" placeholder='{"type":"Polygon","coordinates":[...]}' />
+          </label>
+          <label v-if="editing._id" class="field" style="display: flex; align-items: center; gap: 8px">
+            <input type="checkbox" v-model="editing.provisional" style="width: auto" />
+            <span style="margin: 0">Provisional (placement pending DRDM confirmation)</span>
           </label>
           <label v-if="editing._id" class="field" style="display: flex; align-items: center; gap: 8px">
             <input type="checkbox" v-model="editing.active" style="width: auto" />

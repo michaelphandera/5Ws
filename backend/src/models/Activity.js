@@ -43,6 +43,8 @@ const activitySchema = new mongoose.Schema(
     },
     startDate: { type: Date, required: true },
     endDate: { type: Date },
+    // Disaster / Emergency & DRM context (event, drmPhase, informComponent,
+    // dataSource) lives on the Project — one section for the whole project.
     beneficiaries: [beneficiarySchema],
     notes: { type: String, trim: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

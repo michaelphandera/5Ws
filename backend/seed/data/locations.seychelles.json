@@ -1,62 +1,65 @@
 {
   "levels": [
     { "level": 1, "name": "Region" },
-    { "level": 2, "name": "District" }
+    { "level": 2, "name": "District" },
+    { "level": 3, "name": "Locality / Island" }
   ],
-  "regions": [
-    {
-      "name": "Mahé",
-      "code": "SC-MAHE",
-      "centroid": { "lat": -4.67, "lng": 55.47 },
-      "districts": [
-        { "name": "Anse aux Pins", "code": "SC-MAHE-AAP", "centroid": { "lat": -4.69, "lng": 55.515 } },
-        { "name": "Anse Boileau", "code": "SC-MAHE-ABO", "centroid": { "lat": -4.715, "lng": 55.485 } },
-        { "name": "Anse Etoile", "code": "SC-MAHE-AET", "centroid": { "lat": -4.59, "lng": 55.455 } },
-        { "name": "Anse Royale", "code": "SC-MAHE-ARO", "centroid": { "lat": -4.74, "lng": 55.51 } },
-        { "name": "Au Cap", "code": "SC-MAHE-AUC", "centroid": { "lat": -4.71, "lng": 55.5 } },
-        { "name": "Baie Lazare", "code": "SC-MAHE-BLA", "centroid": { "lat": -4.745, "lng": 55.485 } },
-        { "name": "Beau Vallon", "code": "SC-MAHE-BVA", "centroid": { "lat": -4.615, "lng": 55.435 } },
-        { "name": "Bel Air", "code": "SC-MAHE-BAI", "centroid": { "lat": -4.625, "lng": 55.45 } },
-        { "name": "Bel Ombre", "code": "SC-MAHE-BOM", "centroid": { "lat": -4.62, "lng": 55.415 } },
-        { "name": "Cascade", "code": "SC-MAHE-CAS", "centroid": { "lat": -4.65, "lng": 55.49 } },
-        { "name": "English River", "code": "SC-MAHE-ERI", "centroid": { "lat": -4.615, "lng": 55.455 } },
-        { "name": "Glacis", "code": "SC-MAHE-GLA", "centroid": { "lat": -4.58, "lng": 55.44 } },
-        { "name": "Grand'Anse Mahé", "code": "SC-MAHE-GAM", "centroid": { "lat": -4.665, "lng": 55.46 } },
-        { "name": "Ile Perseverance", "code": "SC-MAHE-IPE", "centroid": { "lat": -4.595, "lng": 55.47 } },
-        { "name": "Les Mamelles", "code": "SC-MAHE-LMA", "centroid": { "lat": -4.635, "lng": 55.47 } },
-        { "name": "Mont Buxton", "code": "SC-MAHE-MBU", "centroid": { "lat": -4.62, "lng": 55.445 } },
-        { "name": "Mont Fleuri", "code": "SC-MAHE-MFL", "centroid": { "lat": -4.635, "lng": 55.455 } },
-        { "name": "Plaisance", "code": "SC-MAHE-PLA", "centroid": { "lat": -4.64, "lng": 55.46 } },
-        { "name": "Pointe La Rue", "code": "SC-MAHE-PLR", "centroid": { "lat": -4.675, "lng": 55.52 } },
-        { "name": "Port Glaud", "code": "SC-MAHE-PGL", "centroid": { "lat": -4.655, "lng": 55.42 } },
-        { "name": "Roche Caiman", "code": "SC-MAHE-RCA", "centroid": { "lat": -4.635, "lng": 55.475 } },
-        { "name": "Saint Louis", "code": "SC-MAHE-SLO", "centroid": { "lat": -4.62, "lng": 55.44 } },
-        { "name": "Takamaka", "code": "SC-MAHE-TAK", "centroid": { "lat": -4.76, "lng": 55.495 } }
-      ]
-    },
-    {
-      "name": "Praslin",
-      "code": "SC-PRAS",
-      "centroid": { "lat": -4.33, "lng": 55.73 },
-      "districts": [
-        { "name": "Baie Sainte Anne", "code": "SC-PRAS-BSA", "centroid": { "lat": -4.35, "lng": 55.76 } },
-        { "name": "Grand'Anse Praslin", "code": "SC-PRAS-GAP", "centroid": { "lat": -4.33, "lng": 55.7 } },
-        { "name": "Anse Kerlan", "code": "SC-PRAS-AKE", "centroid": { "lat": -4.305, "lng": 55.685 } }
-      ]
-    },
-    {
-      "name": "La Digue & Inner Islands",
-      "code": "SC-LDIG",
-      "centroid": { "lat": -4.36, "lng": 55.84 },
-      "districts": [
-        { "name": "La Digue", "code": "SC-LDIG-LDI", "centroid": { "lat": -4.36, "lng": 55.835 } }
-      ]
-    },
-    {
-      "name": "Outer Islands",
-      "code": "SC-OUTI",
-      "centroid": { "lat": -6.5, "lng": 52.0 },
-      "districts": []
-    }
+  "nodes": [
+    { "code": "SC-MAHE", "name": "Mahé", "level": 1, "parentCode": null, "informAdm1": "SC1", "centroid": { "lat": -4.67, "lng": 55.47 }, "notes": "INFORM ADM1 = SC1. Splits into 5 INFORM ADM2 zones (SC11–SC15) — allocation of districts to zones TO CONFIRM with NBS/DRDM." },
+    { "code": "SC-PRAS", "name": "Praslin", "level": 1, "parentCode": null, "informAdm1": "SC2", "informAdm2": "SC26", "centroid": { "lat": -4.33, "lng": 55.73 }, "notes": "INFORM \"SC26\" is Praslin and is NOT the same as ISO SC-26 (Ile Perseverance I)." },
+    { "code": "SC-LDIG", "name": "La Digue & Inner Islands", "level": 1, "parentCode": null, "informAdm1": "SC3", "centroid": { "lat": -4.36, "lng": 55.84 }, "notes": "INFORM ADM1 = SC3 (La Digue). Source: SADC INFORM model, SUBDIVISIONS tab." },
+    { "code": "SC-OUTI", "name": "Outer Islands", "level": 1, "parentCode": null, "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -6.5, "lng": 52.0 }, "notes": "INFORM ADM1 = SC4 / ADM2 = SC47 (Other Islands)." },
+
+    { "code": "SC-MAHE-AAP", "name": "Anse aux Pins", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-01", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.69, "lng": 55.515 } },
+    { "code": "SC-MAHE-ABO", "name": "Anse Boileau", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-02", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.715, "lng": 55.485 } },
+    { "code": "SC-MAHE-AET", "name": "Anse Etoile", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-03", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.59, "lng": 55.455 } },
+    { "code": "SC-MAHE-AUC", "name": "Au Cap", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-04", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.71, "lng": 55.5 }, "notes": "ISO code assigned on former name \"Anse Louis\", hence 04." },
+    { "code": "SC-MAHE-ARO", "name": "Anse Royale", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-05", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.74, "lng": 55.51 } },
+    { "code": "SC-MAHE-BLA", "name": "Baie Lazare", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-06", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.745, "lng": 55.485 } },
+    { "code": "SC-PRAS-BSA", "name": "Baie Sainte Anne", "level": 2, "parentCode": "SC-PRAS", "isoCode": "SC-07", "informAdm1": "SC2", "informAdm2": "SC26", "centroid": { "lat": -4.35, "lng": 55.76 } },
+    { "code": "SC-MAHE-BVA", "name": "Beau Vallon", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-08", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.615, "lng": 55.435 } },
+    { "code": "SC-MAHE-BAI", "name": "Bel Air", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-09", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.625, "lng": 55.45 } },
+    { "code": "SC-MAHE-BOM", "name": "Bel Ombre", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-10", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.62, "lng": 55.415 } },
+    { "code": "SC-MAHE-CAS", "name": "Cascade", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-11", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.65, "lng": 55.49 } },
+    { "code": "SC-MAHE-GLA", "name": "Glacis", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-12", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.58, "lng": 55.44 }, "notes": "District also covers Mamelles Island and Brisan Rocks." },
+    { "code": "SC-MAHE-GAM", "name": "Grand'Anse Mahé", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-13", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.665, "lng": 55.46 } },
+    { "code": "SC-PRAS-GAP", "name": "Grand'Anse Praslin", "level": 2, "parentCode": "SC-PRAS", "isoCode": "SC-14", "informAdm1": "SC2", "informAdm2": "SC26", "centroid": { "lat": -4.33, "lng": 55.7 } },
+    { "code": "SC-LDIG-LDI", "name": "La Digue and Inner Islands", "level": 2, "parentCode": "SC-LDIG", "isoCode": "SC-15", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -4.36, "lng": 55.835 }, "notes": "Official district created 1994 by merging La Digue and Silhouette districts — covers La Digue plus Silhouette, North, Denis, Bird, Fregate and other Inner Islands." },
+    { "code": "SC-MAHE-ERI", "name": "English River (La Riviere Anglaise)", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-16", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.615, "lng": 55.455 }, "notes": "Name carries the ISO/francophone form used in national records." },
+    { "code": "SC-MAHE-MBU", "name": "Mont Buxton", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-17", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.62, "lng": 55.445 } },
+    { "code": "SC-MAHE-MFL", "name": "Mont Fleuri", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-18", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.635, "lng": 55.455 }, "notes": "District also covers the six islands of Sainte Anne Marine National Park plus Beacon Island and Harrison Rock." },
+    { "code": "SC-MAHE-PLA", "name": "Plaisance", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-19", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.64, "lng": 55.46 } },
+    { "code": "SC-MAHE-PLR", "name": "Pointe La Rue", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-20", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.675, "lng": 55.52 } },
+    { "code": "SC-MAHE-PGL", "name": "Port Glaud", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-21", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.655, "lng": 55.42 } },
+    { "code": "SC-MAHE-SLO", "name": "Saint Louis", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-22", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.62, "lng": 55.44 } },
+    { "code": "SC-MAHE-TAK", "name": "Takamaka", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-23", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.76, "lng": 55.495 } },
+    { "code": "SC-MAHE-LMA", "name": "Les Mamelles", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-24", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.635, "lng": 55.47 } },
+    { "code": "SC-MAHE-RCA", "name": "Roche Caiman", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-25", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.635, "lng": 55.475 } },
+    { "code": "SC-MAHE-IPE", "name": "Ile Perseverance I", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-26", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.595, "lng": 55.47 }, "notes": "ISO 3166-2 created SC-26 and SC-27 in 2020 — Perseverance Island is administered as two districts." },
+    { "code": "SC-MAHE-IP2", "name": "Ile Perseverance II", "level": 2, "parentCode": "SC-MAHE", "isoCode": "SC-27", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.6, "lng": 55.472 }, "notes": "Created 2020 (ISO SC-27)." },
+    { "code": "SC-OUTI-OUT", "name": "Outer Islands (Zil Elwannyen Sesel)", "level": 2, "parentCode": "SC-OUTI", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -6.5, "lng": 52.0 }, "notes": "Administratively the 26th district; deliberately NOT in ISO 3166-2." },
+
+    { "code": "SC-PRAS-AKE", "name": "Anse Kerlan", "level": 3, "parentCode": "SC-PRAS-GAP", "informAdm1": "SC2", "informAdm2": "SC26", "centroid": { "lat": -4.305, "lng": 55.685 }, "notes": "Locality inside Grand'Anse Praslin district — reclassified from District (REV1); not one of the 27 ISO districts." },
+
+    { "code": "SC-LDIG-SIL", "name": "Silhouette Island", "level": 3, "parentCode": "SC-LDIG-LDI", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -4.483, "lng": 55.245 }, "notes": "Part of SC-15 district since the 1994 merger." },
+    { "code": "SC-LDIG-NOR", "name": "North Island", "level": 3, "parentCode": "SC-LDIG-LDI", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -4.395, "lng": 55.245 } },
+    { "code": "SC-LDIG-DEN", "name": "Denis Island", "level": 3, "parentCode": "SC-LDIG-LDI", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -3.802, "lng": 55.667 } },
+    { "code": "SC-LDIG-BIR", "name": "Bird Island", "level": 3, "parentCode": "SC-LDIG-LDI", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -3.723, "lng": 55.206 } },
+    { "code": "SC-LDIG-FRE", "name": "Fregate Island", "level": 3, "parentCode": "SC-LDIG-LDI", "informAdm1": "SC3", "informAdm2": "SC36", "centroid": { "lat": -4.583, "lng": 55.94 } },
+    { "code": "SC-MAHE-STA", "name": "Sainte Anne Island", "level": 3, "parentCode": "SC-MAHE-MFL", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.612, "lng": 55.505 }, "notes": "Sainte Anne Marine National Park." },
+    { "code": "SC-MAHE-CER", "name": "Cerf Island", "level": 3, "parentCode": "SC-MAHE-MFL", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.625, "lng": 55.499 }, "notes": "Sainte Anne Marine National Park." },
+    { "code": "SC-MAHE-MOY", "name": "Moyenne Island", "level": 3, "parentCode": "SC-MAHE-MFL", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.617, "lng": 55.509 }, "notes": "Sainte Anne Marine National Park. Operating area of Moyenne Island (Foundation) Society." },
+    { "code": "SC-MAHE-RND", "name": "Round Island (Mahé)", "level": 3, "parentCode": "SC-MAHE-MFL", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.62, "lng": 55.503 }, "notes": "Sainte Anne Marine National Park." },
+    { "code": "SC-MAHE-MAM", "name": "Mamelles Island", "level": 3, "parentCode": "SC-MAHE-GLA", "informAdm1": "SC1", "informAdm2": "TO CONFIRM", "centroid": { "lat": -4.545, "lng": 55.478 }, "notes": "Administered within Glacis district." },
+    { "code": "SC-PRAS-CUR", "name": "Curieuse Island", "level": 3, "parentCode": "SC-PRAS", "informAdm1": "SC2", "informAdm2": "SC26", "provisional": true, "centroid": { "lat": -4.283, "lng": 55.73 }, "notes": "District allocation TO CONFIRM with DRDM / Local Government." },
+    { "code": "SC-PRAS-COU", "name": "Cousin Island", "level": 3, "parentCode": "SC-PRAS", "informAdm1": "SC2", "informAdm2": "SC26", "provisional": true, "centroid": { "lat": -4.33, "lng": 55.66 }, "notes": "Nature Seychelles special reserve. District allocation TO CONFIRM." },
+    { "code": "SC-PRAS-CSN", "name": "Cousine Island", "level": 3, "parentCode": "SC-PRAS", "informAdm1": "SC2", "informAdm2": "SC26", "provisional": true, "centroid": { "lat": -4.35, "lng": 55.645 }, "notes": "District allocation TO CONFIRM." },
+    { "code": "SC-PRAS-ARI", "name": "Aride Island", "level": 3, "parentCode": "SC-PRAS", "informAdm1": "SC2", "informAdm2": "SC26", "provisional": true, "centroid": { "lat": -4.21, "lng": 55.665 }, "notes": "Island Conservation Society reserve. District allocation TO CONFIRM." },
+    { "code": "SC-PRAS-FEL", "name": "Felicite Island", "level": 3, "parentCode": "SC-PRAS", "informAdm1": "SC2", "informAdm2": "SC26", "provisional": true, "centroid": { "lat": -4.32, "lng": 55.868 }, "notes": "District allocation TO CONFIRM." },
+    { "code": "SC-OUTI-AMI", "name": "Amirantes Group", "level": 3, "parentCode": "SC-OUTI-OUT", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -5.6, "lng": 53.3 }, "notes": "Includes Desroches, Poivre, D'Arros, Marie-Louise, Remire." },
+    { "code": "SC-OUTI-ALP", "name": "Alphonse Group", "level": 3, "parentCode": "SC-OUTI-OUT", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -7.02, "lng": 52.73 }, "notes": "Alphonse, Bijoutier, St Francois." },
+    { "code": "SC-OUTI-FAR", "name": "Farquhar Group", "level": 3, "parentCode": "SC-OUTI-OUT", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -10.17, "lng": 51.13 }, "notes": "Farquhar Atoll, Providence Atoll, St Pierre." },
+    { "code": "SC-OUTI-ALD", "name": "Aldabra Group", "level": 3, "parentCode": "SC-OUTI-OUT", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -9.42, "lng": 46.35 }, "notes": "Aldabra Atoll (UNESCO World Heritage, managed by SIF), Assumption, Astove, Cosmoledo." },
+    { "code": "SC-OUTI-SCG", "name": "Southern Coral Group", "level": 3, "parentCode": "SC-OUTI-OUT", "informAdm1": "SC4", "informAdm2": "SC47", "centroid": { "lat": -7.1, "lng": 56.27 }, "notes": "Coetivy and Platte." }
   ]
 }

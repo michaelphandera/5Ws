@@ -30,6 +30,7 @@ const PAGE_TITLES = {
   'admin-activity-types': 'Activity Types',
   'admin-beneficiary-groups': 'Beneficiary Groups',
   'admin-events': 'Disaster Events',
+  'admin-inform-components': 'INFORM Components',
   'admin-disaggregations': 'Disaggregations',
   'admin-users': 'Users',
 };
@@ -57,13 +58,13 @@ function logout() {
 <template>
   <div class="app-shell">
     <nav class="side-nav">
-      <div class="brand">
-        <img class="brand-emblem" :src="drdmLogo" alt="Disaster Risk Management Division, Seychelles" />
+      <router-link to="/" class="brand" title="Go to the public home page">
+        <img class="brand-emblem" :src="drdmLogo" alt="Department of Risk and Disaster Management and DICT, Seychelles" />
         <div class="brand-name">
-          5Ws Seychelles
-          <small>CIVIL SOCIETY COORDINATION</small>
+          CIVIL SOCIETY COORDINATION PLATFORM
+          <small>5Ws Seychelles</small>
         </div>
-      </div>
+      </router-link>
 
       <div class="nav-section">Reporting</div>
       <router-link to="/dashboard"><Icon name="dashboard" /> Dashboard</router-link>
@@ -82,6 +83,7 @@ function logout() {
         <router-link to="/admin/beneficiary-groups"><Icon name="users" /> Beneficiary Groups</router-link>
         <router-link to="/admin/disaggregations"><Icon name="layers" /> Disaggregations</router-link>
         <router-link to="/admin/events"><Icon name="alert" /> Disaster Events</router-link>
+        <router-link to="/admin/inform-components"><Icon name="layers" /> INFORM Components</router-link>
         <router-link to="/admin/users"><Icon name="userCog" /> Users</router-link>
       </template>
 

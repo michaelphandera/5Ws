@@ -16,9 +16,21 @@ const selectedByLevel = ref({ 1: '', 2: '', 3: '' });
 const levels = computed(() => lookups.adminLevelConfig.levels || []);
 
 function optionsForLevel(level) {
-  const parentId = level === 1 ? null : selectedByLevel.value[level - 1] || null;
+  if (level === 1) {
+    return lookups.locations.filter((l) => l.level === 1 && l.active !== false);
+  }
+  // Parent = nearest SELECTED ancestor, not strictly level-1: some level-3
+  // units (provisional islands) hang directly off a region while their
+  // district is unconfirmed.
+  let parentId = null;
+  for (let lv = level - 1; lv >= 1; lv--) {
+    if (selectedByLevel.value[lv]) {
+      parentId = selectedByLevel.value[lv];
+      break;
+    }
+  }
   return lookups.locations.filter(
-    (l) => l.level === level && l.active !== false && (level === 1 || l.parent === parentId)
+    (l) => l.level === level && l.active !== false && l.parent === parentId
   );
 }
 

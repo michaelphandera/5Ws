@@ -9,6 +9,7 @@ const POPULATE = [
   { path: 'implementingPartners', select: 'name acronym type' },
   { path: 'fundingSources', select: 'name acronym type' },
   { path: 'event', select: 'name type glideNumber status' },
+  { path: 'informComponent', select: 'name dimension category' },
 ];
 
 exports.list = catchAsync(async (req, res) => {
@@ -53,6 +54,9 @@ exports.update = catchAsync(async (req, res) => {
     fundingSources,
     implementingPartners,
     event,
+    drmPhase,
+    informComponent,
+    dataSource,
   } = req.body;
   // organization is immutable after creation (activities denormalize it).
   Object.assign(project, {
@@ -65,6 +69,9 @@ exports.update = catchAsync(async (req, res) => {
     ...(fundingSources !== undefined && { fundingSources }),
     ...(implementingPartners !== undefined && { implementingPartners }),
     ...(event !== undefined && { event: event || null }),
+    ...(drmPhase !== undefined && { drmPhase: drmPhase || null }),
+    ...(informComponent !== undefined && { informComponent: informComponent || null }),
+    ...(dataSource !== undefined && { dataSource: dataSource || null }),
   });
   await project.save();
   audit(req, 'update', 'Project', project);

@@ -9,8 +9,9 @@ import Pager from '../components/common/Pager.vue';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../composables/toast';
 import { useClientTable } from '../composables/clientTable';
-import { downloadCsv } from '../utils/csv';
+import { downloadCsv, exportFilename } from '../utils/csv';
 import { googleEarthUrl, eyeAltForLevel } from '../utils/googleEarth';
+import { drmPhaseLabel } from '../utils/drm';
 
 const toast = useToast();
 
@@ -41,7 +42,7 @@ const { q, page, pages, filtered, paged } = useClientTable(activities, {
 
 function exportCsv() {
   downloadCsv(
-    `${(project.value?.title || 'project').replace(/[^\w-]+/g, '-').toLowerCase()}-activities.csv`,
+    exportFilename(`${(project.value?.title || 'Project').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '')}_Activities`, 'csv'),
     ['Activity', 'Sector', 'Locations', 'Start', 'End'],
     filtered.value.map((a) => [
       a.title,
@@ -111,6 +112,19 @@ const fmt = (d) => (d ? d.slice(0, 10) : '—');
         <div>
           <div class="card-title">Funding sources</div>
           {{ (project.fundingSources || []).map((o) => o?.name).filter(Boolean).join(', ') || '—' }}
+        </div>
+      </div>
+      <div v-if="project.event || project.drmPhase || project.informComponent || project.dataSource" style="margin-top: 12px">
+        <div class="card-title">Disaster / Emergency &amp; DRM context</div>
+        <span v-if="project.event" class="chip" style="padding-right: 11px" :title="project.event.glideNumber || ''">
+          {{ project.event.name }}
+        </span>
+        <span v-if="project.drmPhase" class="chip" style="padding-right: 11px">{{ drmPhaseLabel(project.drmPhase) }}</span>
+        <span v-if="project.informComponent" class="chip" style="padding-right: 11px">
+          {{ project.informComponent.name }}
+        </span>
+        <div v-if="project.dataSource" class="muted" style="font-size: 12px; margin-top: 4px">
+          Data source / verified by: {{ project.dataSource }}
         </div>
       </div>
       <div style="margin-top: 12px">

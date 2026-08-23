@@ -10,6 +10,7 @@ const DisaggregationCategory = require('../models/DisaggregationCategory');
 const AdminLevelConfig = require('../models/AdminLevelConfig');
 const { catchAsync, httpError } = require('../middleware/errorHandler');
 const { audit } = require('../utils/audit');
+const { exportFilename } = require('../utils/exportName');
 
 const { ORG_TYPES } = Organization;
 
@@ -150,6 +151,52 @@ function addInstructions(wb, title, lines) {
   return ws;
 }
 
+// Columns present in the file but not consumed by the import — the upload
+// preview lists them so nothing is EVER silently dropped. `refused` columns
+// are recognized but deliberately not imported (project-level or
+// system-managed); the rest are simply unknown headers.
+function computeIgnoredColumns(parsed, knownColumns, refusedColumns) {
+  const known = new Set(knownColumns.map(lower));
+  const refusedSet = new Set(refusedColumns.map(lower));
+  const ignored = [];
+  for (const f of parsed.meta.fields || []) {
+    if (refusedSet.has(lower(f))) {
+      ignored.push({
+        column: f,
+        reason: 'project-level / system-managed — ignored (set it on the Project in the app)',
+      });
+    } else if (!known.has(lower(f))) {
+      ignored.push({ column: f, reason: 'not a recognized column — ignored' });
+    }
+  }
+  return ignored;
+}
+
+// Excel A1 column letter for a 1-based index.
+function colLetter(i) {
+  let s = '';
+  for (let n = i; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+  return s;
+}
+
+// Dropdown (list) validation on a Data-sheet column, fed by a reference-sheet
+// range. errorStyle 'warning' keeps Excel from blocking legitimate values the
+// dropdown cannot know — the import itself is the real validator.
+function addListValidation(ws, headers, headerName, formula) {
+  const idx = headers.indexOf(headerName) + 1;
+  if (!idx) return;
+  const L = colLetter(idx);
+  ws.dataValidations.add(`${L}2:${L}1000`, {
+    type: 'list',
+    allowBlank: true,
+    showErrorMessage: true,
+    errorStyle: 'warning',
+    errorTitle: 'Value not in the reference list',
+    error: 'Pick a value from the reference sheets (warning only — the import validates on upload).',
+    formulae: [formula],
+  });
+}
+
 async function sendWorkbook(res, wb, filename) {
   res.setHeader(
     'Content-Type',
@@ -182,6 +229,22 @@ const ACT_FIXED_COLUMNS = [
   'Targeted Total',
 ];
 const ACT_REQUIRED = ['Project Title', 'Activity Title', 'Sector', 'Locations', 'Start Date'];
+// Recognized but deliberately NOT imported: these live on the Project (or are
+// system-managed timestamps). The preview reports them so data is never
+// silently dropped (REV1 instructions explicitly worried about this).
+// DRM context (phase / INFORM component / data source) moved to the Project's
+// "Disaster / Emergency & DRM context" section alongside the event.
+const ACT_PROJECT_LEVEL_COLUMNS = [
+  'Activity Status',
+  'Funding Source / Donor',
+  'Budget (SCR)',
+  'Partner Organization(s)',
+  'Last Updated',
+  'DRM Phase',
+  'Hazard / INFORM Component Addressed',
+  'INFORM Dimension',
+  'Data Source / Verified By',
+];
 
 async function activityTemplateHeaders() {
   const demoCats = await DisaggregationCategory.find().sort('order').lean();
@@ -203,7 +266,10 @@ exports.activitiesTemplate = catchAsync(async (req, res) => {
   const { headers, demoCats } = await activityTemplateHeaders();
   const [orgs, locations, sectors, groups, cfg, projects] = await Promise.all([
     Organization.find({ active: { $ne: false } }).select('name acronym').sort('name').lean(),
-    Location.find({ active: { $ne: false } }).select('name code level parent').sort({ level: 1, name: 1 }).lean(),
+    Location.find({ active: { $ne: false } })
+      .select('name code level parent isoCode informAdm1 informAdm2 provisional notes')
+      .sort({ level: 1, name: 1 })
+      .lean(),
     Sector.find({ active: { $ne: false } }).select('name code').sort('name').lean(),
     BeneficiaryGroup.find().select('name').sort('name').lean(),
     AdminLevelConfig.findOne().lean(),
@@ -224,45 +290,60 @@ exports.activitiesTemplate = catchAsync(async (req, res) => {
     'Upload this workbook directly (only the Data sheet is read), or save the Data sheet as CSV first.',
     'Delete the two example rows before importing.',
     'Dates must be in YYYY-MM-DD format. Beneficiary numbers must be whole numbers.',
+    'Dropdowns on the Data sheet are fed by the reference sheets; they warn (not block) so the server-side validation preview stays authoritative.',
     '',
     '2. Values must match what is already in the system:',
     'Organization Acronym — a short code from the Organizations sheet.',
     'Project Title — must match an existing project exactly (see the Projects sheet). Projects must be created in the app before importing their activities.',
     'Sector — a name or code from the Sectors sheet.',
-    'Locations — semicolon-separated P-codes (preferred) or unique names from the Locations sheet, e.g. "SC-AN; SC-BV".',
+    'Locations — semicolon-separated P-codes (preferred) or unique names from the Locations sheet, e.g. "SC-MAHE-BVA; SC-MAHE-AET".',
     'Beneficiary Group — a name from the Beneficiary Groups sheet.',
     '',
-    '3. Several beneficiary groups on one activity:',
+    '3. Project-level columns:',
+    'Disaster / Emergency & DRM context (event, DRM Phase, Hazard / INFORM Component, Data Source / Verified By) is set once on the Project in the app — one section on the project form.',
+    'Activity Status, Funding Source / Donor, Budget, Partner Organization(s), Last Updated and the DRM context columns are PROJECT-level or system-managed — such columns are reported and ignored on import; set them on the Project in the app.',
+    '',
+    '4. Several beneficiary groups on one activity:',
     'Repeat the row on CONSECUTIVE lines with the same Project Title, Activity Title and Start Date — only the beneficiary columns need to change. The rows merge into one activity.',
     '',
-    `4. Required columns: ${ACT_REQUIRED.join(', ')}.`,
+    `5. Required columns: ${ACT_REQUIRED.join(', ')}.`,
     '',
     'The import runs a validation preview first — nothing is saved until every row passes.',
   ]);
 
   const blanks = demoCats.map(() => '');
-  addSheet(wb, 'Data', headers, [
-    ['NGO-A', 'Coastal Resilience Programme', 'Mangrove replanting - Phase 1', 'Environment',
-      'SC-AN; SC-BV', '2026-01-15', '2026-06-30', 'Replanting along the north coast', '',
+  const dataWs = addSheet(wb, 'Data', headers, [
+    ['NATSEY', 'Coastal Resilience & Mangrove Restoration', 'Mangrove replanting - Phase 1', 'ENV',
+      'SC-MAHE-BVA; SC-MAHE-AET', '2026-01-15', '2026-06-30', 'Replanting along the north coast', '',
       'Youth', '120', ...blanks, '70', '50'],
-    ['NGO-A', 'Coastal Resilience Programme', 'Mangrove replanting - Phase 1', 'Environment',
-      'SC-AN; SC-BV', '2026-01-15', '2026-06-30', '', '',
-      'Elderly (60+)', '30', ...blanks, '20', '10'],
+    ['NATSEY', 'Coastal Resilience & Mangrove Restoration', 'Mangrove replanting - Phase 1', 'ENV',
+      'SC-MAHE-BVA; SC-MAHE-AET', '2026-01-15', '2026-06-30', '', '',
+      'Elderly', '30', ...blanks, '20', '10'],
   ], { tab: 'FF19703A' });
 
   addSheet(wb, 'Organizations', ['Acronym (short code)', 'Name'],
     orgs.map((o) => [o.acronym || '', o.name]));
-  addSheet(wb, 'Locations', ['P-code', 'Name', 'Level', 'Parent'],
+  addSheet(wb, 'Locations',
+    ['P-code', 'Name', 'Level', 'Parent', 'ISO 3166-2', 'INFORM ADM1', 'INFORM ADM2', 'Status', 'Notes'],
     locations.map((l) => [
       l.code || '', l.name, levelName(l.level),
       l.parent ? locById.get(l.parent.toString())?.name || '' : '',
+      l.isoCode || '', l.informAdm1 || '', l.informAdm2 || '',
+      l.provisional ? 'Provisional' : 'Active', l.notes || '',
     ]));
   addSheet(wb, 'Sectors', ['Name', 'Code'], sectors.map((s) => [s.name, s.code || '']));
   addSheet(wb, 'Beneficiary Groups', ['Name'], groups.map((g) => [g.name]));
   addSheet(wb, 'Projects', ['Project Title', 'Organization Acronym', 'Status'],
     projects.map((p) => [p.title, p.organization?.acronym || p.organization?.name || '', p.status]));
 
-  await sendWorkbook(res, wb, '5w-activities-import-template.xlsx');
+  // Dropdowns (warning-style) fed by the reference sheets.
+  addListValidation(dataWs, headers, 'Organization Acronym',
+    `Organizations!$A$2:$A$${orgs.length + 1}`);
+  addListValidation(dataWs, headers, 'Sector', `Sectors!$B$2:$B$${sectors.length + 1}`);
+  addListValidation(dataWs, headers, 'Beneficiary Group',
+    `'Beneficiary Groups'!$A$2:$A$${groups.length + 1}`);
+
+  await sendWorkbook(res, wb, exportFilename('Activities_Template', 'xlsx'));
 });
 
 async function loadActivityLookups(reqUser) {
@@ -301,7 +382,9 @@ async function loadActivityLookups(reqUser) {
     projectsByTitle.get(key).push(p);
   }
 
-  return { sectorByKey, locByCode, locsByName, groupByName, demoCats, projectsByTitle };
+  return {
+    sectorByKey, locByCode, locsByName, groupByName, demoCats, projectsByTitle,
+  };
 }
 
 function resolveLocations(value, lookups, errors) {
@@ -396,6 +479,17 @@ async function validateActivityRows(parsed, reqUser) {
   requireColumns(parsed, ACT_REQUIRED);
   const lookups = await loadActivityLookups(reqUser);
 
+  const ignoredColumns = computeIgnoredColumns(
+    parsed,
+    [
+      ...ACT_FIXED_COLUMNS,
+      ...lookups.demoCats.map((c) => c.label),
+      'Female (group split)',
+      'Male (group split)',
+    ],
+    ACT_PROJECT_LEVEL_COLUMNS
+  );
+
   const rowReports = [];
   const activities = [];
   let prevKey = null;
@@ -480,6 +574,14 @@ async function validateActivityRows(parsed, reqUser) {
     }
   }
 
+  // Refused columns also surface as a warning on the first data row so they
+  // are visible in the row-by-row preview, not only in the summary.
+  if (rowReports.length && ignoredColumns.length) {
+    for (const ic of ignoredColumns) {
+      rowReports[0].warnings.push(`Column "${ic.column}" is ${ic.reason}`);
+    }
+  }
+
   const errorRows = rowReports.filter((r) => r.errors.length).length;
   const summary = {
     totalRows: rowReports.length,
@@ -487,6 +589,7 @@ async function validateActivityRows(parsed, reqUser) {
     errorRows,
     warningRows: rowReports.filter((r) => r.warnings.length).length,
     activitiesToCreate: activities.filter((a) => !a.hasErrors).length,
+    ignoredColumns,
   };
   return { rows: rowReports, activities, summary };
 }
@@ -524,14 +627,71 @@ exports.activitiesImport = catchAsync(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 const ORG_COLUMNS = [
-  'Name', 'Acronym', 'Type', 'Aim', 'Date Founded', 'Chairperson',
-  'Emails', 'Phones', 'Postal Address', 'Webpage', 'Commission',
+  'Name', 'Acronym', 'Organization Type', 'Registration No.', 'HQ District P-code',
+  'Primary Sector Code', 'Also Works In', 'Aim', 'Date Founded', 'Chairperson',
+  'Contact Person', 'Emails', 'Phones', 'Postal Address', 'Website / Social', 'Notes',
 ];
+// Old header names still accepted (files made from earlier templates).
+const ORG_COLUMN_ALIASES = { Type: 'Organization Type', Commission: 'Primary Sector Code', Webpage: 'Website / Social' };
+
+// Human labels for org types as written in the REV1 register (mirrors
+// export.controller ORG_TYPE_LABELS / frontend orgTypes.js).
+const ORG_TYPE_IMPORT_LABELS = {
+  donor: 'Donor',
+  government: 'Government',
+  'un-agency': 'UN Agency',
+  'international-ngo': 'International NGO / INGO',
+  'national-ngo': 'National NGO',
+  'civil-society': 'Civil Society Organization',
+  'community-based': 'Community-based Organisation (CBO)',
+  'faith-based': 'Faith-based Organisation (FBO)',
+  'private-sector': 'Private Sector',
+  academia: 'Academia / Research',
+  'red-cross-red-crescent': 'Red Cross / Red Crescent',
+  'umbrella-network': 'Umbrella body / Network',
+  'professional-association': 'Professional Association',
+  'sports-cultural-club': 'Sports / Cultural Club',
+  'foundation-trust': 'Foundation / Trust',
+  cooperative: 'Cooperative',
+  'volunteer-youth-movement': 'Volunteer / Youth Movement',
+  other: 'Other',
+};
+
+// Accepts a raw enum value or any reasonable spelling of the label
+// ("Community-based Organisation (CBO)", "faith-based organization", ...).
+// Returns the enum value, or null when unrecognized.
+function normalizeOrgType(raw) {
+  const clean = lower(raw)
+    .replace(/\(.*?\)/g, '') // strip "(CBO)"-style suffixes
+    .replace(/organisation/g, 'organization')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  if (!clean) return null;
+  if (ORG_TYPES.includes(clean.replace(/ /g, '-'))) return clean.replace(/ /g, '-');
+  for (const [value, label] of Object.entries(ORG_TYPE_IMPORT_LABELS)) {
+    const cleanLabel = lower(label)
+      .replace(/\(.*?\)/g, '')
+      .replace(/organisation/g, 'organization')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+    if (clean === cleanLabel) return value;
+    // Accept the label with slashes/word-order intact minus filler ("Umbrella body / Network" -> "umbrella network")
+    if (cleanLabel.split(' ').every((w) => clean.includes(w)) && clean.split(' ').every((w) => cleanLabel.includes(w))) {
+      return value;
+    }
+  }
+  // Common short forms.
+  if (clean === 'cbo') return 'community-based';
+  if (clean === 'fbo') return 'faith-based';
+  if (clean === 'ingo') return 'international-ngo';
+  return null;
+}
 
 exports.organizationsTemplate = catchAsync(async (req, res) => {
-  const [existing, sectors] = await Promise.all([
+  const [existing, sectors, districts] = await Promise.all([
     Organization.find({ active: { $ne: false } }).select('name acronym').sort('name').lean(),
     Sector.find({ active: { $ne: false } }).select('name code').sort('name').lean(),
+    Location.find({ active: { $ne: false }, level: 2 }).select('name code').sort('name').lean(),
   ]);
 
   const wb = new ExcelJS.Workbook();
@@ -540,36 +700,45 @@ exports.organizationsTemplate = catchAsync(async (req, res) => {
     'Fill in the Data sheet — one row per organization. Only Name is required.',
     'Upload this workbook directly (only the Data sheet is read), or save the Data sheet as CSV first.',
     'Delete the example row before importing.',
-    'Emails and Phones take several values separated by semicolons.',
+    'Emails, Phones and Also Works In take several values separated by semicolons.',
     '',
     '2. Values must match what is already in the system:',
-    'Type — one of the values on the Types sheet (e.g. civil-society).',
-    'Commission — a sector name or code from the Commissions sheet.',
+    'Organization Type — a label from the Types sheet (e.g. Community-based Organisation (CBO)).',
+    'HQ District P-code — a P-code from the Districts sheet (use the code, not the district name).',
+    'Primary Sector Code / Also Works In — sector codes from the Sectors sheet.',
     'Organizations already in the system (see the Existing Organizations sheet) are skipped — the import never updates or duplicates them.',
     '',
     'The import runs a validation preview first — nothing is saved until every row passes.',
   ]);
 
-  addSheet(wb, 'Data', ORG_COLUMNS, [[
-    'Example Youth Council', 'EYC', 'civil-society',
+  const dataWs = addSheet(wb, 'Data', ORG_COLUMNS, [[
+    'Example Youth Council', 'EYC', 'Community-based Organisation (CBO)', 'CSO/RA/2015/123',
+    'SC-MAHE-AET', 'YSC', 'DRR; CCA',
     'Empowering young people through skills and civic participation', '2015', 'A. Person',
-    'info@example.org; chair@example.org', '+248 2 000 000', 'P.O. Box 123, Victoria',
-    'https://example.org', 'Youth Development',
+    'B. Person', 'info@example.org; chair@example.org', '+248 2 000 000', 'P.O. Box 123, Victoria',
+    'https://example.org', '',
   ]], { tab: 'FF19703A' });
 
-  addSheet(wb, 'Types', ['Type (use this value)'], ORG_TYPES.map((t) => [t]));
-  addSheet(wb, 'Commissions', ['Name', 'Code'], sectors.map((s) => [s.name, s.code || '']));
+  addSheet(wb, 'Types', ['Organization Type (write this label)', 'Machine value'],
+    ORG_TYPES.map((t) => [ORG_TYPE_IMPORT_LABELS[t] || t, t]));
+  addSheet(wb, 'Sectors', ['Name', 'Code'], sectors.map((s) => [s.name, s.code || '']));
+  addSheet(wb, 'Districts', ['P-code', 'Name'], districts.map((d) => [d.code || '', d.name]));
   addSheet(wb, 'Existing Organizations', ['Name', 'Acronym (short code)'],
     existing.map((o) => [o.name, o.acronym || '']));
 
-  await sendWorkbook(res, wb, 'organizations-import-template.xlsx');
+  addListValidation(dataWs, ORG_COLUMNS, 'Organization Type', `Types!$A$2:$A$${ORG_TYPES.length + 1}`);
+  addListValidation(dataWs, ORG_COLUMNS, 'HQ District P-code', `Districts!$A$2:$A$${districts.length + 1}`);
+  addListValidation(dataWs, ORG_COLUMNS, 'Primary Sector Code', `Sectors!$B$2:$B$${sectors.length + 1}`);
+
+  await sendWorkbook(res, wb, exportFilename('Organizations_Template', 'xlsx'));
 });
 
 async function validateOrganizationRows(parsed) {
   requireColumns(parsed, ['Name']);
-  const [existing, sectors] = await Promise.all([
+  const [existing, sectors, districts] = await Promise.all([
     Organization.find().select('name').lean(),
     Sector.find().select('name code').lean(),
+    Location.find().select('name code').lean(),
   ]);
   const existingNames = new Set(existing.map((o) => lower(o.name)));
   const sectorByKey = new Map();
@@ -577,6 +746,13 @@ async function validateOrganizationRows(parsed) {
     sectorByKey.set(lower(s.name), s);
     if (s.code) sectorByKey.set(lower(s.code), s);
   }
+  const locByCode = new Map(districts.filter((l) => l.code).map((l) => [lower(l.code), l]));
+
+  const ignoredColumns = computeIgnoredColumns(
+    parsed,
+    [...ORG_COLUMNS, ...Object.keys(ORG_COLUMN_ALIASES)],
+    []
+  );
 
   const splitList = (v) => v.split(';').map(norm).filter(Boolean);
   const rowReports = [];
@@ -586,6 +762,13 @@ async function validateOrganizationRows(parsed) {
   parsed.data.forEach((raw, i) => {
     const line = i + 2;
     const get = fieldGetter(raw);
+    // New header name first, old template header as fallback.
+    const getAliased = (name) => {
+      const direct = get(name);
+      if (direct) return direct;
+      const oldName = Object.keys(ORG_COLUMN_ALIASES).find((k) => ORG_COLUMN_ALIASES[k] === name);
+      return oldName ? get(oldName) : '';
+    };
     const errors = [];
     const warnings = [];
 
@@ -603,33 +786,64 @@ async function validateOrganizationRows(parsed) {
     }
     if (name) seenInFile.add(lower(name));
 
-    const typeRaw = get('Type');
-    const type = typeRaw ? lower(typeRaw) : 'civil-society';
-    if (typeRaw && !ORG_TYPES.includes(type)) {
-      errors.push(`Invalid Type "${typeRaw}" — expected one of: ${ORG_TYPES.join(', ')}`);
+    const typeRaw = getAliased('Organization Type');
+    let type = 'civil-society';
+    if (typeRaw) {
+      const normalized = normalizeOrgType(typeRaw);
+      if (!normalized) {
+        errors.push(
+          `Invalid Organization Type "${typeRaw}" — expected one of: ${Object.values(ORG_TYPE_IMPORT_LABELS).join(', ')}`
+        );
+      } else {
+        type = normalized;
+      }
     }
 
-    const commissionName = get('Commission');
+    const commissionName = getAliased('Primary Sector Code');
     const commission = commissionName ? sectorByKey.get(lower(commissionName)) : null;
-    if (commissionName && !commission) errors.push(`Unknown commission/sector "${commissionName}"`);
+    if (commissionName && !commission) errors.push(`Unknown primary sector "${commissionName}"`);
+
+    const otherSectors = [];
+    for (const codeRaw of splitList(get('Also Works In'))) {
+      const s = sectorByKey.get(lower(codeRaw));
+      if (!s) errors.push(`Unknown sector "${codeRaw}" in Also Works In`);
+      else if (!commission || String(s._id) !== String(commission._id)) otherSectors.push(s._id);
+    }
+
+    const hqRaw = get('HQ District P-code');
+    const hqDistrict = hqRaw ? locByCode.get(lower(hqRaw)) : null;
+    if (hqRaw && !hqDistrict) {
+      errors.push(`Unknown HQ District P-code "${hqRaw}" — see the Districts sheet (use the code, not the name)`);
+    }
 
     if (!errors.length && !skip && name) {
       docs.push({
         name,
         acronym: get('Acronym') || undefined,
         type,
+        registrationNo: get('Registration No.') || undefined,
+        hqDistrict: hqDistrict?._id,
         aim: get('Aim') || undefined,
         dateFounded: get('Date Founded') || undefined,
         chairperson: get('Chairperson') || undefined,
+        contactPerson: get('Contact Person') || undefined,
         emails: splitList(get('Emails')),
         phones: splitList(get('Phones')),
         postalAddress: get('Postal Address') || undefined,
-        webpage: get('Webpage') || undefined,
+        webpage: getAliased('Website / Social') || undefined,
+        notes: get('Notes') || undefined,
         commission: commission?._id,
+        otherSectors,
       });
     }
     rowReports.push({ line, data: raw, errors, warnings, skipped: skip });
   });
+
+  if (rowReports.length && ignoredColumns.length) {
+    for (const ic of ignoredColumns) {
+      rowReports[0].warnings.push(`Column "${ic.column}" is ${ic.reason}`);
+    }
+  }
 
   const errorRows = rowReports.filter((r) => r.errors.length).length;
   const skippedRows = rowReports.filter((r) => r.skipped).length;
@@ -640,6 +854,7 @@ async function validateOrganizationRows(parsed) {
     warningRows: rowReports.filter((r) => r.warnings.length).length,
     skippedRows,
     organizationsToCreate: docs.length,
+    ignoredColumns,
   };
   return { rows: rowReports, docs, summary };
 }

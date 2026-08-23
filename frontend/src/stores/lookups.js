@@ -9,6 +9,7 @@ export const useLookupsStore = defineStore('lookups', {
     beneficiaryGroups: [],
     disaggregations: [],
     events: [],
+    informComponents: [],
     organizations: [],
     locations: [],
     locationTree: [],
@@ -25,12 +26,13 @@ export const useLookupsStore = defineStore('lookups', {
   actions: {
     async load(force = false) {
       if (this.loaded && !force) return;
-      const [sectors, types, groups, disaggs, events, orgs, locations, tree, cfg] = await Promise.all([
+      const [sectors, types, groups, disaggs, events, informComponents, orgs, locations, tree, cfg] = await Promise.all([
         api.get('/sectors'),
         api.get('/activity-types'),
         api.get('/beneficiary-groups'),
         api.get('/disaggregations'),
         api.get('/events'),
+        api.get('/inform-components'),
         api.get('/organizations'),
         api.get('/locations'),
         api.get('/locations/tree'),
@@ -41,6 +43,7 @@ export const useLookupsStore = defineStore('lookups', {
       this.beneficiaryGroups = groups.data;
       this.disaggregations = disaggs.data;
       this.events = events.data;
+      this.informComponents = informComponents.data;
       this.organizations = orgs.data;
       this.locations = locations.data;
       this.locationTree = tree.data;

@@ -65,16 +65,21 @@ const fmt = (d) => (d ? d.slice(0, 10) : '—');
         <table class="data">
           <tbody>
             <tr v-if="org.aim && org.description"><td class="muted">Aim</td><td>{{ org.aim }}</td></tr>
+            <tr v-if="org.registrationNo"><td class="muted">Registration No.</td><td>{{ org.registrationNo }}</td></tr>
+            <tr v-if="org.hqDistrict"><td class="muted">HQ district</td><td>{{ org.hqDistrict.name }}{{ org.hqDistrict.code ? ` (${org.hqDistrict.code})` : '' }}</td></tr>
+            <tr v-if="org.otherSectors?.length"><td class="muted">Also works in</td><td>{{ org.otherSectors.map((s) => s.name).join(', ') }}</td></tr>
             <tr v-if="org.dateFounded"><td class="muted">Founded</td><td>{{ org.dateFounded }}</td></tr>
             <tr v-if="org.chairperson"><td class="muted">Chairperson</td><td>{{ org.chairperson }}</td></tr>
+            <tr v-if="org.contactPerson"><td class="muted">Contact person</td><td>{{ org.contactPerson }}</td></tr>
             <tr v-if="org.emails?.length"><td class="muted">Email</td><td>{{ org.emails.join(', ') }}</td></tr>
             <tr v-if="org.phones?.length"><td class="muted">Phone</td><td>{{ org.phones.join(', ') }}</td></tr>
             <tr v-if="org.postalAddress"><td class="muted">Postal address</td><td>{{ org.postalAddress }}</td></tr>
             <tr v-if="org.physicalAddress"><td class="muted">Physical address</td><td>{{ org.physicalAddress }}</td></tr>
             <tr v-if="org.webpage">
-              <td class="muted">Webpage</td>
+              <td class="muted">Website / social</td>
               <td><a :href="org.webpage.startsWith('http') ? org.webpage : `https://${org.webpage}`" target="_blank" rel="noopener">{{ org.webpage }}</a></td>
             </tr>
+            <tr v-if="org.notes"><td class="muted">Notes</td><td>{{ org.notes }}</td></tr>
           </tbody>
         </table>
       </div>

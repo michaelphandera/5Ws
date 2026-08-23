@@ -8,8 +8,13 @@ import { useAuthStore } from '../stores/auth';
 import BarChart from '../components/dashboard/BarChart.vue';
 import DonutChart from '../components/dashboard/DonutChart.vue';
 import DemographicsCard from '../components/dashboard/DemographicsCard.vue';
+import HeadlineGroups from '../components/dashboard/HeadlineGroups.vue';
+import LocationMultiPicker from '../components/dashboard/LocationMultiPicker.vue';
 import ActivityMap from '../components/dashboard/ActivityMap.vue';
 import Icon from '../components/common/Icon.vue';
+import ExportMenu from '../components/common/ExportMenu.vue';
+import { exportFilename } from '../utils/csv';
+import { orgTypeLabel } from '../utils/orgTypes';
 import drdmLogo from '../assets/drdm-logo.png';
 
 const auth = useAuthStore();
@@ -18,23 +23,47 @@ const failed = ref(false);
 const fetching = ref(false);
 
 // Public filters — whitelisted server-side; options come from the first load.
-const filters = ref({ sector: '', status: '', location: '' });
-const options = ref({ sectors: [], locations: [], levels: [] });
-const hasFilters = computed(() => Object.values(filters.value).some(Boolean));
+// `location` holds multiple ids (sent comma-separated, union of subtrees).
+const emptyFilters = () => ({
+  organization: '',
+  sector: '',
+  status: '',
+  event: '',
+  dateFrom: '',
+  dateTo: '',
+  location: [],
+});
+const filters = ref(emptyFilters());
+const options = ref({ sectors: [], locations: [], levels: [], organizations: [], events: [] });
+const hasFilters = computed(() =>
+  Object.values(filters.value).some((v) => (Array.isArray(v) ? v.length : v))
+);
+
+function filterParams() {
+  const params = {};
+  for (const [k, v] of Object.entries(filters.value)) {
+    if (k === 'location') {
+      if (v.length) params[k] = v.join(',');
+    } else if (v) {
+      params[k] = v;
+    }
+  }
+  return params;
+}
 
 async function fetchSummary() {
   fetching.value = true;
   try {
-    const params = {};
-    for (const [k, v] of Object.entries(filters.value)) if (v) params[k] = v;
     // Plain axios: no token attachment, no interceptors needed on a public call.
-    const { data } = await axios.get('/api/public/summary', { params });
+    const { data } = await axios.get('/api/public/summary', { params: filterParams() });
     s.value = data;
     if (!options.value.sectors.length) {
       options.value = {
         sectors: data.sectorOptions || [],
         locations: data.locationOptions || [],
         levels: data.levels || [],
+        organizations: data.organizationOptions || [],
+        events: data.eventOptions || [],
       };
     }
   } catch {
@@ -44,19 +73,20 @@ async function fetchSummary() {
   }
 }
 
+// Date typing and chip toggling shouldn't fire a request per keystroke/click.
+let debounceTimer = null;
+function fetchSummaryDebounced() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(fetchSummary, 300);
+}
+
 function clearFilters() {
-  filters.value = { sector: '', status: '', location: '' };
+  filters.value = emptyFilters();
   fetchSummary();
 }
 
-const locationsByLevel = computed(() => {
-  const groups = [];
-  for (const lvl of options.value.levels) {
-    const items = options.value.locations.filter((l) => l.level === lvl.level);
-    if (items.length) groups.push({ ...lvl, items });
-  }
-  return groups;
-});
+// TODO: confirm DMIS URL
+const DMIS_URL = 'https://dmis.gov.sc';
 
 onMounted(fetchSummary);
 
@@ -104,8 +134,77 @@ const sectorChartHeight = computed(() => Math.max(180, (s.value?.bySector || [])
 
 const activeEvents = computed(() => (s.value?.byEvent || []).filter((e) => e.status === 'active'));
 
+// Implementing organizations by type — the "Who" companion to the coverage map.
+const orgTypeData = computed(() => ({
+  labels: (s.value?.byOrgType || []).map((r) => orgTypeLabel(r.type)),
+  values: (s.value?.byOrgType || []).map((r) => r.count),
+}));
+const orgTypeChartHeight = computed(() => Math.max(180, (s.value?.byOrgType || []).length * 26 + 24));
+
+// Ranked areas at the map's admin level — the glanceable "Where".
+const topAreas = computed(() => (s.value?.byLevel?.[s.value.mapLevel] || []).slice(0, 8));
+const maxAreaCount = computed(() => Math.max(1, ...topAreas.value.map((a) => a.count)));
+
+const eventData = computed(() => ({
+  labels: (s.value?.byEvent || []).map((r) => r.name),
+  values: (s.value?.byEvent || []).map((r) => r.projects),
+}));
+
+// Click-to-filter, toggle semantics: clicking the active selection clears it.
+function onSectorSelect({ index }) {
+  const row = s.value?.bySector?.[index];
+  if (!row) return;
+  filters.value.sector = String(filters.value.sector) === String(row.sectorId) ? '' : row.sectorId;
+  fetchSummary();
+}
+function onStatusSelect({ label }) {
+  const key = (label || '').toLowerCase();
+  filters.value.status = filters.value.status === key ? '' : key;
+  fetchSummary();
+}
+function toggleLocation(locationId) {
+  const id = String(locationId);
+  const cur = filters.value.location.map(String);
+  filters.value.location = cur.includes(id)
+    ? filters.value.location.filter((x) => String(x) !== id)
+    : [...filters.value.location, locationId];
+  fetchSummary();
+}
+
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+// Public exports: PDF/image snapshots of the overview as shown, and an Excel
+// of the same aggregates from the (unauthenticated) public API.
+const exportRoot = ref(null);
+const exporting = ref(false);
+async function exportSnapshot(kind) {
+  if (!exportRoot.value || exporting.value) return;
+  exporting.value = true;
+  try {
+    // Loaded on demand — the capture/PDF libraries are too heavy to ship eagerly.
+    const { exportNodeAsPng, exportNodeAsPdf } = await import('../utils/exportView');
+    if (kind === 'pdf') {
+      await exportNodeAsPdf(exportRoot.value, 'Overview', 'Who does What, Where, When, for Whom');
+    } else {
+      await exportNodeAsPng(exportRoot.value, 'Overview');
+    }
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function exportOverviewXlsx() {
+  const params = new URLSearchParams(filterParams());
+  axios.get(`/api/public/summary.xlsx?${params}`, { responseType: 'blob' }).then((res) => {
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportFilename('Overview', 'xlsx');
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
 </script>
 
 <template>
@@ -142,34 +241,29 @@ const fmtDate = (d) =>
       </svg>
 
       <div class="hero-inner">
-        <div class="hero-topbar">
-          <div class="public-brand">
-            <span class="brand-ring">
-              <img :src="drdmLogo" alt="Disaster Risk Management Division, Seychelles" />
-            </span>
-            <div>
-              <b>5Ws Seychelles</b>
-              <small>CIVIL SOCIETY COORDINATION PLATFORM</small>
-            </div>
-          </div>
-          <router-link v-if="auth.isAuthenticated" class="hero-cta" :to="{ name: 'dashboard' }">
-            Open dashboard
-          </router-link>
-          <router-link v-else class="hero-cta" :to="{ name: 'login' }">Log in</router-link>
-        </div>
-
         <div class="hero-main">
-          <h1>Who does What, Where, When, for Whom</h1>
-          <p class="hero-lede">
-            A live picture of civil-society projects across Seychelles, coordinated by the
-            Disaster Risk Management Division.
-          </p>
+          <span class="brand-ring hero-logo">
+            <img :src="drdmLogo" alt="Department of Risk and Disaster Management and DICT, Seychelles" />
+          </span>
+          <div>
+            <div class="hero-dept">Department of Risk and Disaster Management and DICT, Seychelles</div>
+            <h1>CIVIL SOCIETY COORDINATION PLATFORM</h1>
+            <div class="hero-sub">5Ws — Who does What, Where, When, for Whom</div>
+          </div>
+          <div class="hero-actions">
+            <router-link class="hero-link" :to="{ name: 'directory' }">Organization Directory</router-link>
+            <a class="hero-link" :href="DMIS_URL" target="_blank" rel="noopener">DMIS <span class="ext" aria-hidden="true">↗</span></a>
+            <router-link v-if="auth.isAuthenticated" class="hero-cta" :to="{ name: 'dashboard' }">
+              Open dashboard
+            </router-link>
+            <router-link v-else class="hero-cta" :to="{ name: 'login' }">Log in</router-link>
+          </div>
         </div>
       </div>
     </header>
     <div class="flag-bar flag-bar-hero" aria-hidden="true"></div>
 
-    <main class="public-body">
+    <main ref="exportRoot" class="public-body">
       <div v-if="failed" class="card empty" style="padding: 32px">
         The overview is temporarily unavailable. Please try again in a moment.
       </div>
@@ -212,62 +306,117 @@ const fmtDate = (d) =>
           </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filters — same dimensions as the internal dashboard (minus budgets) -->
         <div class="filter-bar card">
-          <span class="fb-label">Filter</span>
-          <select v-model="filters.sector" @change="fetchSummary">
-            <option value="">All sectors</option>
-            <option v-for="o in options.sectors" :key="o._id" :value="o._id">{{ o.name }}</option>
-          </select>
-          <select v-model="filters.status" @change="fetchSummary">
-            <option value="">All statuses</option>
-            <option value="planned">Planned</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
-          </select>
-          <select v-model="filters.location" @change="fetchSummary">
-            <option value="">All areas</option>
-            <optgroup v-for="g in locationsByLevel" :key="g.level" :label="g.name">
-              <option v-for="l in g.items" :key="l._id" :value="l._id">{{ l.name }}</option>
-            </optgroup>
-          </select>
-          <button v-if="hasFilters" class="btn btn-sm" @click="clearFilters">Clear</button>
-          <span v-if="fetching" class="muted fb-busy">Updating…</span>
-        </div>
-
-        <!-- Coverage map -->
-        <div class="card">
-          <div class="card-row">
-            <div>
-              <div class="card-title">Where work is happening</div>
-              <div class="card-sub">Click a {{ unitLabel }} for details · the “Organizations” layer shows member offices</div>
+          <div class="fb-top">
+            <span class="fb-label">Filter</span>
+            <span v-if="fetching" class="muted fb-busy">Updating…</span>
+            <div class="fb-actions" data-export-exclude>
+              <button v-if="hasFilters" class="btn btn-sm" @click="clearFilters">Clear</button>
+              <ExportMenu
+                :label="exporting ? 'Exporting…' : 'Export'"
+                :items="[
+                  { label: 'Overview PDF (.pdf)', run: () => exportSnapshot('pdf') },
+                  { label: 'Overview image (.png)', run: () => exportSnapshot('png') },
+                  { label: 'Overview Excel (.xlsx)', run: exportOverviewXlsx },
+                ]"
+              />
             </div>
           </div>
-          <ActivityMap
-            :byLevel="s.byLevel"
-            :maxLevel="s.maxLocLevel"
-            :levels="s.levels"
-            :orgMarkers="s.organizations"
-            :startLevel="s.maxLocLevel"
-            :showTable="false"
-            :height="300"
-            geojsonUrl="/public/geojson"
-            :interactive="false"
-          />
+          <div class="fb-fields">
+            <select v-model="filters.organization" @change="fetchSummary">
+              <option value="">All organizations</option>
+              <option v-for="o in options.organizations" :key="o._id" :value="o._id">
+                {{ o.acronym ? `${o.acronym} — ${o.name}` : o.name }}
+              </option>
+            </select>
+            <select v-model="filters.sector" @change="fetchSummary">
+              <option value="">All sectors</option>
+              <option v-for="o in options.sectors" :key="o._id" :value="o._id">{{ o.name }}</option>
+            </select>
+            <select v-model="filters.status" @change="fetchSummary">
+              <option value="">All statuses</option>
+              <option value="planned">Planned</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+            </select>
+            <select v-model="filters.event" @change="fetchSummary">
+              <option value="">All emergencies</option>
+              <option v-for="e in options.events" :key="e._id" :value="e._id">{{ e.name }}</option>
+            </select>
+            <LocationMultiPicker
+              v-model="filters.location"
+              :locations="options.locations"
+              :levels="options.levels"
+              class="fb-locations"
+              @update:modelValue="fetchSummaryDebounced"
+            />
+            <label class="fb-date">
+              <span>From</span>
+              <input type="date" v-model="filters.dateFrom" @change="fetchSummaryDebounced" />
+            </label>
+            <label class="fb-date">
+              <span>To</span>
+              <input type="date" v-model="filters.dateTo" @change="fetchSummaryDebounced" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Coverage map (left) + organizations-by-type chart (right) -->
+        <div class="map-row">
+          <div class="card">
+            <div class="card-row">
+              <div>
+                <div class="card-title">Where work is happening</div>
+                <div class="card-sub">Click a {{ unitLabel }} for details, drill down, or filter the page · the “Organizations” layer shows member offices</div>
+              </div>
+            </div>
+            <ActivityMap
+              :byLevel="s.byLevel"
+              :maxLevel="s.maxLocLevel"
+              :levels="s.levels"
+              :orgMarkers="s.organizations"
+              :startLevel="s.maxLocLevel"
+              :showTable="true"
+              :height="480"
+              geojsonUrl="/public/geojson"
+              :interactive="true"
+              :org-actions="false"
+              @select-location="toggleLocation"
+            />
+          </div>
+
+          <div class="card">
+            <div class="card-title">Who — organizations by type</div>
+            <div class="card-sub">Implementing organizations in the current selection</div>
+            <div v-if="!orgTypeData.labels.length" class="empty" style="padding: 24px 12px">
+              No implementing organizations under the current filters.
+            </div>
+            <BarChart
+              v-else
+              :labels="orgTypeData.labels"
+              :values="orgTypeData.values"
+              horizontal
+              showValues
+              :height="orgTypeChartHeight"
+            />
+          </div>
         </div>
 
         <!-- Row 1: seams align — the donut card stretches to the sector card's height -->
         <div class="two-col">
           <div class="card">
             <div class="card-title">What — projects by sector</div>
-            <div class="card-sub">A project counts under every sector its activities report</div>
+            <div class="card-sub">A project counts under every sector its activities report · click a bar to filter</div>
             <BarChart
               :labels="sectorData.labels"
               :values="sectorData.values"
               :colors="sectorData.colors"
               horizontal
               showValues
+              clickable
               :height="sectorChartHeight"
+              @select="onSectorSelect"
             />
           </div>
 
@@ -275,7 +424,15 @@ const fmtDate = (d) =>
             <div class="spread">
               <div>
                 <div class="card-title">When — project status</div>
-                <DonutChart :items="statusItems" centerLabel="Projects" :size="150" />
+                <div class="card-sub">Click a slice to filter</div>
+                <DonutChart
+                  :items="statusItems"
+                  centerLabel="Projects"
+                  :size="150"
+                  clickable
+                  :activeLabel="filters.status ? cap(filters.status) : ''"
+                  @select="onStatusSelect"
+                />
               </div>
               <hr class="card-divider" />
               <div>
@@ -286,16 +443,65 @@ const fmtDate = (d) =>
           </div>
         </div>
 
-        <!-- Row 2 -->
+        <!-- Row 2: ranked areas + emergency context (mirrors the internal dashboard) -->
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Most active {{ unitLabel }}s</div>
+            <div class="card-sub">Where — ranked by projects, click to filter the page</div>
+            <div v-if="!topAreas.length" class="empty" style="padding: 24px 12px">
+              No located activities under the current filters.
+            </div>
+            <button
+              v-for="a in topAreas"
+              :key="a.locationId"
+              class="area-row"
+              type="button"
+              @click="toggleLocation(a.locationId)"
+            >
+              <span class="area-name">{{ a.name }}</span>
+              <span class="area-bar">
+                <span class="fill" :style="{ width: (a.count / maxAreaCount) * 100 + '%' }"></span>
+              </span>
+              <span class="area-nums">
+                <b>{{ a.count }}</b> project{{ a.count === 1 ? '' : 's' }}
+                <span class="muted">· {{ a.orgCount }} org{{ a.orgCount === 1 ? '' : 's' }}</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Disaster / Emergency context</div>
+            <div class="card-sub">Projects linked to registered emergencies</div>
+            <template v-if="s.byEvent.length">
+              <BarChart :labels="eventData.labels" :values="eventData.values" horizontal :height="Math.max(120, s.byEvent.length * 44)" />
+              <table class="data" style="margin-top: 8px">
+                <tbody>
+                  <tr v-for="e in s.byEvent" :key="e.eventId">
+                    <td><b>{{ e.name }}</b> <span class="muted">{{ e.glideNumber }}</span></td>
+                    <td><span class="badge" :class="e.status === 'active' ? 'badge-suspended' : 'badge-planned'">{{ e.status }}</span></td>
+                    <td style="text-align: right">{{ e.projects }} project{{ e.projects === 1 ? '' : 's' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+            <div v-else class="empty" style="padding: 24px 12px">
+              No projects are linked to a disaster event under the current filters.
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
         <div class="two-col">
           <div class="card">
             <div class="card-title">For Whom — targeted beneficiaries</div>
             <div class="card-sub">By disaggregation category, as reported</div>
+            <HeadlineGroups :demographics="s.demographics" />
             <DemographicsCard :demographics="s.demographics" />
           </div>
 
           <div class="card">
-            <div class="card-title">Recently registered projects</div>
+            <div class="card-title">Latest updates</div>
+            <div class="card-sub">Most recently added or edited projects in the current selection</div>
             <div v-if="!s.recentProjects?.length" class="empty" style="padding: 20px 12px">
               No projects reported yet.
             </div>
@@ -305,7 +511,8 @@ const fmtDate = (d) =>
                   <div class="ri-title">{{ p.title }}</div>
                   <div class="ri-org">
                     {{ p.organization?.acronym || p.organization?.name || '—' }}
-                    <span class="ri-dates">· {{ fmtDate(p.startDate) }}</span>
+                    <span class="ri-dates">· {{ fmtDate(p.startDate) }} — {{ fmtDate(p.endDate) }}</span>
+                    <span class="ri-dates">· updated {{ fmtDate(p.updatedAt) }}</span>
                     <span v-for="sec in p.sectors" :key="sec.name" class="sector-chip">
                       <span class="gdot" :style="{ background: sec.color || '#1d5fad' }"></span>{{ sec.name }}
                     </span>
@@ -330,14 +537,21 @@ const fmtDate = (d) =>
 
     <div class="flag-bar" aria-hidden="true"></div>
     <footer class="public-footer">
-      5Ws Seychelles — Civil Society Coordination Platform · Disaster Risk Management Division ·
+      5Ws Seychelles — Civil Society Coordination Platform · Department of Risk and Disaster Management and DICT ·
+      <router-link :to="{ name: 'directory' }">Organization directory</router-link> ·
+      <a :href="DMIS_URL" target="_blank" rel="noopener">DMIS</a> ·
       <router-link :to="{ name: 'login' }">Organization login</router-link>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.public-page { min-height: 100vh; background: var(--page-bg, #f2f5f9); display: flex; flex-direction: column; }
+.public-page {
+  min-height: 100vh; background: var(--page-bg, #f2f5f9); display: flex; flex-direction: column;
+  /* One gutter + one content width shared by hero and body so their edges align */
+  --page-gutter: clamp(20px, 4vw, 48px);
+  --page-max: 1320px;
+}
 
 /* ---- Hero — same gradient and motifs as the login page ---- */
 .hero {
@@ -346,7 +560,7 @@ const fmtDate = (d) =>
   /* Deeper, muted take on the login gradient — same hue journey, less glare */
   background: linear-gradient(160deg, #001d3d 0%, #083a63 55%, #0a5148 115%);
   color: #fff;
-  padding: 0 22px 20px;
+  padding: 22px var(--page-gutter);
 }
 /* Full-bleed background mesh behind the hero content */
 .hero-art {
@@ -354,9 +568,7 @@ const fmtDate = (d) =>
   pointer-events: none;
 }
 @media (max-width: 760px) { .hero-art { display: none; } }
-.hero-inner { position: relative; max-width: 1440px; margin: 0 auto; }
-.hero-topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0 16px; }
-.public-brand { display: flex; align-items: center; gap: 10px; }
+.hero-inner { position: relative; max-width: var(--page-max); margin: 0 auto; }
 .brand-ring {
   width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
   background: #fff; border: 3px solid #fff;
@@ -364,8 +576,7 @@ const fmtDate = (d) =>
   display: flex; align-items: center; justify-content: center;
 }
 .brand-ring img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; display: block; }
-.public-brand b { display: block; font-size: 14.5px; letter-spacing: 0.2px; }
-.public-brand small { display: block; font-size: 8.5px; letter-spacing: 1.3px; color: rgba(255, 255, 255, 0.68); }
+.hero-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .hero-cta {
   background: #d6242b; color: #fff; text-decoration: none;
   font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
@@ -373,11 +584,36 @@ const fmtDate = (d) =>
   transition: background 0.15s; white-space: nowrap;
 }
 .hero-cta:hover { background: #b81d23; }
+/* Nav links: quiet uppercase text so the red CTA stays the only button */
+.hero-link {
+  color: rgba(255, 255, 255, 0.82); text-decoration: none;
+  font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 8px 10px; border-radius: 4px; white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+.hero-link:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.hero-link .ext { font-size: 10px; opacity: 0.7; }
 
-.hero-main { padding-bottom: 2px; }
-/* Hero type: pure white with opacity steps — tinted grays go muddy on the dark gradient */
-.hero h1 { color: #fff; font-size: clamp(19px, 2.4vw, 25px); line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.2px; }
-.hero-lede { color: rgba(255, 255, 255, 0.84); max-width: 560px; margin: 0; font-size: 13px; line-height: 1.5; }
+/* Letterhead layout: emblem + text stack left, actions pushed to the right —
+   one row, so no empty band above or beside the lockup */
+.hero-main { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.hero-logo { width: 72px; height: 72px; }
+/* Hero type hierarchy: department + platform title lead large; the 5Ws line
+   sits beneath them in smaller type. Pure white with opacity steps — tinted
+   grays go muddy on the dark gradient. */
+.hero-dept {
+  color: rgba(255, 255, 255, 0.92); font-size: clamp(14px, 1.7vw, 17px);
+  font-weight: 700; letter-spacing: 0.2px; margin-bottom: 4px;
+}
+.hero h1 {
+  color: #fff; font-size: clamp(22px, 3vw, 32px); line-height: 1.15;
+  margin: 0 0 4px; letter-spacing: 0.6px;
+}
+.hero-sub {
+  color: rgba(255, 255, 255, 0.75); font-size: 12px; font-weight: 700;
+  letter-spacing: 1.6px; text-transform: uppercase;
+}
+@media (max-width: 600px) { .hero-logo { width: 52px; height: 52px; } }
 
 /* Seychelles flag stripe, as on the login card. Flat 90° segments — at page
    width an angled gradient makes the bands look offset — and a hairline
@@ -401,8 +637,9 @@ const fmtDate = (d) =>
 
 /* ---- Body ---- */
 .public-body {
-  /* 1440 + 2×22px gutters, so card edges line up with .hero-inner */
-  flex: 1; width: 100%; max-width: 1484px; margin: 0 auto; padding: 16px 22px 24px;
+  /* content-box: max-width covers content only, so card edges line up with .hero-inner */
+  flex: 1; box-sizing: content-box; width: auto; max-width: var(--page-max);
+  margin: 0 auto; padding: 16px var(--page-gutter) 24px;
   display: flex; flex-direction: column; gap: 14px;
 }
 /* One uniform 14px rhythm — the global `.card + .card { margin-top }` rule
@@ -418,16 +655,56 @@ const fmtDate = (d) =>
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
 
+/* Map left, companion chart right — the map earns the wider column. */
+.map-row { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: stretch; }
+@media (max-width: 1000px) { .map-row { grid-template-columns: 1fr; } }
+
 .public-stats.stat-row { margin-bottom: 0; grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 900px) { .public-stats.stat-row { grid-template-columns: repeat(2, 1fr); } }
 
 .filter-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 10px 14px !important;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px !important;
 }
+.fb-top { display: flex; align-items: center; gap: 10px; }
 .fb-label { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; color: var(--ink-3, #8a93a2); text-transform: uppercase; }
-.filter-bar select { max-width: 220px; font-size: 12.5px; }
 .fb-busy { font-size: 11.5px; }
+.fb-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.fb-fields {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px 10px;
+  align-items: center;
+}
+@media (max-width: 1100px) { .fb-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .fb-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fb-fields select { width: 100%; max-width: none; font-size: 12.5px; }
+.fb-date { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--ink-3, #8a93a2); }
+.fb-date span { flex: 0 0 auto; }
+.fb-date input { flex: 1; min-width: 0; font-size: 12px; }
+.fb-locations { min-width: 0; }
+.fb-locations :deep(select) { max-width: none; font-size: 12.5px; width: 100%; }
+
+/* Ranked "most active areas" rows — whole row is a click target (as internal). */
+.area-row {
+  display: grid; grid-template-columns: 130px 1fr 150px;
+  gap: 10px; align-items: center; width: 100%;
+  padding: 5px 4px; margin: 0; border: none; background: none;
+  border-radius: 6px; cursor: pointer; text-align: left;
+  font: inherit; font-size: 12.5px; color: var(--ink-2, #4b5563);
+}
+.area-row:hover { background: var(--gray-100, #f1f4f8); }
+.area-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.area-bar {
+  position: relative; height: 14px; background: var(--gray-100, #f1f4f8);
+  border: 1px solid var(--border, #e3e8ef); border-radius: 4px; overflow: hidden;
+}
+.area-bar .fill {
+  position: absolute; top: 2px; left: 2px; height: 8px;
+  border-radius: 3px; background: var(--blue-600, #1d5fad);
+}
+.area-nums { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.area-nums b { color: var(--ink, #17263c); }
 
 .emergency-band {
   background: #fdf6ec; border: 1px solid #ecd9b8; border-left: 4px solid #d6242b;
@@ -473,7 +750,7 @@ const fmtDate = (d) =>
 
 .public-footer {
   text-align: center; font-size: 11.5px; color: var(--ink-3, #6b7280);
-  padding: 12px;
+  padding: 12px var(--page-gutter);
 }
 .public-footer a { color: #003f87; font-weight: 700; text-decoration: none; }
 .public-footer a:hover { text-decoration: underline; }

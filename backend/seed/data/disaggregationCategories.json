@@ -5,5 +5,5 @@
   { "key": "men", "label": "Men (18–59)", "gender": "male", "ageMin": 18, "ageMax": 59, "crossCutting": false, "hxlAttribute": "+m+adult", "order": 4 },
   { "key": "elderlyFemale", "label": "Elderly Female (60+)", "gender": "female", "ageMin": 60, "ageMax": null, "crossCutting": false, "hxlAttribute": "+f+elderly", "order": 5 },
   { "key": "elderlyMale", "label": "Elderly Male (60+)", "gender": "male", "ageMin": 60, "ageMax": null, "crossCutting": false, "hxlAttribute": "+m+elderly", "order": 6 },
-  { "key": "pwd", "label": "Persons with Disabilities", "gender": null, "ageMin": null, "ageMax": null, "crossCutting": true, "hxlAttribute": "+disabled", "order": 7 }
+  { "key": "pwd", "label": "Special Needs", "gender": null, "ageMin": null, "ageMax": null, "crossCutting": true, "hxlAttribute": "+disabled", "order": 7 }
 ]

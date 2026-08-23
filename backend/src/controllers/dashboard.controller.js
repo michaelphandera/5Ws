@@ -53,7 +53,19 @@ async function buildSummary(q) {
   const aFilter = { project: { $in: projects.map((p) => p._id) } };
   if (q.sector) aFilter.sector = oid(q.sector);
   if (q.location) {
-    const ids = await resolveSubtreeIds(q.location);
+    // One id or a comma-separated list — filter matches the union of subtrees.
+    const locIds = String(q.location).split(',').map((x) => x.trim()).filter(Boolean);
+    locIds.forEach(oid); // 400 on malformed ids instead of a CastError 500
+    const idSets = await Promise.all(locIds.map((id) => resolveSubtreeIds(id)));
+    const seen = new Set();
+    const ids = [];
+    for (const _id of idSets.flat()) {
+      const k = _id.toString();
+      if (!seen.has(k)) {
+        seen.add(k);
+        ids.push(_id);
+      }
+    }
     aFilter.locations = { $in: ids };
   }
 
@@ -117,7 +129,7 @@ async function buildSummary(q) {
   const Sector = mongoose.model('Sector');
   const [sectors, orgs, allLocations, geomIds] = await Promise.all([
     Sector.find().select('name code color').lean(),
-    Organization.find().select('name acronym').lean(),
+    Organization.find().select('name acronym type').lean(),
     Location.find().select('name level parent active centroid').lean(),
     Location.find({ geometry: { $ne: null } }).select('_id').lean(),
   ]);
@@ -177,6 +189,16 @@ async function buildSummary(q) {
     }
   }
   const byStatus = [...statusCounts.entries()].map(([status, count]) => ({ status, count }));
+
+  // Distinct implementing organizations in the filtered set, grouped by type.
+  const orgTypeCounts = new Map();
+  for (const orgId of orgSet) {
+    const t = orgById.get(orgId)?.type || 'other';
+    orgTypeCounts.set(t, (orgTypeCounts.get(t) || 0) + 1);
+  }
+  const byOrgType = [...orgTypeCounts.entries()]
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count);
 
   const eventIds = [...eventCounts.keys()];
   const eventDocs = eventIds.length
@@ -273,7 +295,7 @@ async function buildSummary(q) {
         startDate: p.startDate,
         endDate: p.endDate,
         updatedAt: p.updatedAt,
-        organization: o ? { name: o.name, acronym: o.acronym || '' } : null,
+        organization: o ? { _id: o._id, name: o.name, acronym: o.acronym || '' } : null,
       };
     });
 
@@ -292,6 +314,7 @@ async function buildSummary(q) {
     demographics,
     bySector,
     byStatus,
+    byOrgType,
     byEvent,
     recentProjects,
     byLevel,

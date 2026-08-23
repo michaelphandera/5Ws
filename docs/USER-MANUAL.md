@@ -42,7 +42,7 @@ budgets and full filtering:
 
 - **Filters** (organization, sector, status, location, disaster event, dates) apply to every widget at once.
 - **Map**: click an area for details; *Drill into…* descends a level; *Filter dashboard* in a popup applies that area as a filter. Toggle the *Organizations* point overlay and the *Satellite* basemap from the layers control (top-right of the map).
-- **Export**: *5W matrix (CSV)* / *(Excel)* download the OCHA-style long-format matrix honouring the active filters. Row 2 contains HXL hashtags; admin columns include P-codes.
+- **Export**: *Dashboard PDF* / *Dashboard image (PNG)* capture the whole dashboard as shown (filters, map, charts); *5W matrix (CSV)* / *(Excel)* download the OCHA-style long-format matrix honouring the active filters. Row 2 contains HXL hashtags; admin columns include P-codes.
 
 ## 4. Organizations directory
 
@@ -58,7 +58,8 @@ organization's project portfolio.
 
 Projects group the activities an organization reports.
 
-- **New project**: title, description, dates, status (planned/ongoing/completed), optional disaster/emergency context, budget (SCR/USD/EUR), funding sources and partner organizations (both from the organization registry).
+- **New project**: title, description, dates, status (planned/ongoing/completed), budget (SCR/USD/EUR), funding sources and partner organizations (both from the organization registry).
+- **Disaster / Emergency & DRM context** — one optional section on the project form: the linked **disaster/emergency event** (leave empty for regular programming), the **DRM cycle phase** (Prevention & Mitigation / Preparedness / Response / Recovery & Rehabilitation / Cross-cutting), the **INFORM risk component** the project addresses (e.g. Flood, Coastal hazards), and a **data source / verified by** note. This context applies to the whole project — activities inherit it.
 - The form **auto-saves a draft** as you type — if the browser closes, reopening the form offers to restore the draft.
 
 ## 6. Reporting activities
@@ -70,21 +71,23 @@ An activity is one 5W report under a project.
 3. Add every **location** the activity covers.
 4. Set the implementation **dates**.
 5. Add **beneficiary groups** with targeted counts, optionally disaggregated (gender/age/PWD as configured by the administrator). If a breakdown is entered, the total is raised to at least the breakdown sum on save.
-6. **Submit.** Drafts auto-save here too — an unfinished report can be resumed later.
+6. **Submit.** Drafts auto-save here too — an unfinished report can be resumed later. (Disaster / Emergency & DRM context is set once on the **project**, not per activity.)
 
 ## 7. Bulk import (CSV)
 
-- **Activities → Import CSV**: download the template, fill one row per activity *per beneficiary group* (repeat the Project Title / Activity Title / Start Date on consecutive rows to add more groups to the same activity). Locations are semicolon-separated P-codes or names. The import first **validates every row** and shows errors/warnings per line — nothing is imported until all rows pass. Projects must already exist.
-- **Admin → Organizations → Import CSV** (admins): bulk-add organizations; rows whose name already exists are skipped.
+- **Activities → Import CSV**: download the template, fill one row per activity *per beneficiary group* (repeat the Project Title / Activity Title / Start Date on consecutive rows to add more groups to the same activity). Locations are semicolon-separated P-codes or names. The import first **validates every row** and shows errors/warnings per line — nothing is imported until all rows pass. Projects must already exist. Columns the import does not consume (e.g. project-level Budget, Funding Source or the Disaster / Emergency & DRM context columns — set those on the Project in the app) are **listed in the preview as ignored** — never silently dropped.
+- **Admin → Organizations → Import CSV** (admins): bulk-add organizations with the full register (type, registration number, HQ district P-code, primary sector, additional sectors, contact person); rows whose name already exists are skipped.
 
 ## 8. Exports
 
 - **5W matrix** (CSV or Excel) from the Dashboard or Activities page — one row per activity × location × beneficiary group, with HXL hashtags and P-codes. *Do not sum beneficiary totals across location rows of the same activity.*
+- **Dashboard snapshots**: both the dashboard and the public landing page export as **PDF** (A4, paginated) or **image (PNG)** — exactly what is on screen under the active filters.
+- The **public landing page** also exports its overview aggregates as **Excel** (totals, by status/sector/area, demographics, disaster events) — no login required, budgets and contacts excluded.
 - Every table (projects, organizations, users, master data) has an **Export CSV** button for what is currently on screen.
 
 ## 9. Administration
 
-- **Master data** (Admin section): organizations, sectors/commissions, locations (with P-codes, centroids and optional GeoJSON boundaries), beneficiary groups, disaggregation categories, disaster events. Records referenced by activities are *deactivated* rather than deleted.
+- **Master data** (Admin section): organizations (incl. registration number, HQ district and sectors), sectors/commissions, locations (with P-codes, ISO 3166-2 and INFORM codes, centroids and optional GeoJSON boundaries), beneficiary groups, disaggregation categories, disaster events and INFORM components. Records referenced by activities are *deactivated* rather than deleted.
 - **Users**: create accounts, assign roles/organizations, deactivate accounts, and reset passwords. Tick **"Require password change at next login"** when issuing a temporary password.
 
 ## 10. Troubleshooting

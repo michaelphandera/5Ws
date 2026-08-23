@@ -35,6 +35,11 @@ onMounted(async () => {
     acronym: data.acronym || '',
     type: data.type || 'civil-society',
     commission: data.commission?._id || data.commission || '',
+    otherSectors: (data.otherSectors || []).map((s) => s?._id || s),
+    registrationNo: data.registrationNo || '',
+    hqDistrict: data.hqDistrict?._id || data.hqDistrict || '',
+    contactPerson: data.contactPerson || '',
+    notes: data.notes || '',
     aim: data.aim || '',
     description: data.description || '',
     dateFounded: data.dateFounded || '',
@@ -60,6 +65,11 @@ async function save() {
       acronym: f.acronym || null,
       type: f.type,
       commission: f.commission || null,
+      otherSectors: f.otherSectors.filter((id) => id !== f.commission),
+      registrationNo: f.registrationNo || null,
+      hqDistrict: f.hqDistrict || null,
+      contactPerson: f.contactPerson || null,
+      notes: f.notes || null,
       aim: f.aim || null,
       description: f.description || null,
       dateFounded: f.dateFounded || null,
@@ -111,11 +121,42 @@ async function save() {
               </select>
             </label>
           </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>Registration No. <span class="hint">(Registrar of Associations)</span></span>
+              <input v-model="form.registrationNo" placeholder="e.g. CSO/RA/2015/123" />
+            </label>
+            <label class="field">
+              <span>HQ district</span>
+              <select v-model="form.hqDistrict">
+                <option value="">—</option>
+                <option
+                  v-for="l in lookups.locations.filter((x) => x.level === 2 && x.active !== false)"
+                  :key="l._id"
+                  :value="l._id"
+                >
+                  {{ l.name }}{{ l.code ? ` (${l.code})` : '' }}
+                </option>
+              </select>
+            </label>
+          </div>
           <label class="field">
-            <span>Commission / Sector</span>
+            <span>Primary sector (commission)</span>
             <select v-model="form.commission">
               <option value="">—</option>
               <option v-for="s in lookups.sectors" :key="s._id" :value="s._id">{{ s.name }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Also works in <span class="hint">(hold Ctrl to select several)</span></span>
+            <select v-model="form.otherSectors" multiple size="5">
+              <option
+                v-for="s in lookups.sectors.filter((x) => x._id !== form.commission)"
+                :key="s._id"
+                :value="s._id"
+              >
+                {{ s.name }}
+              </option>
             </select>
           </label>
           <label class="field">
@@ -136,6 +177,10 @@ async function save() {
               <input v-model="form.chairperson" />
             </label>
           </div>
+          <label class="field">
+            <span>Notes</span>
+            <textarea v-model="form.notes" rows="2" />
+          </label>
         </div>
 
         <div>
@@ -150,6 +195,10 @@ async function save() {
               <input v-model="form.phones" placeholder="+248 2 000 000" />
             </label>
             <label class="field">
+              <span>Contact person</span>
+              <input v-model="form.contactPerson" />
+            </label>
+            <label class="field">
               <span>Postal address</span>
               <input v-model="form.postalAddress" />
             </label>
@@ -158,7 +207,7 @@ async function save() {
               <input v-model="form.physicalAddress" />
             </label>
             <label class="field">
-              <span>Webpage</span>
+              <span>Website / social</span>
               <input v-model="form.webpage" placeholder="https://…" />
             </label>
           </div>

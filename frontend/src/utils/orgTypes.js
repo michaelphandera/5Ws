@@ -11,6 +11,12 @@ export const ORG_TYPES = [
   { value: 'private-sector', label: 'Private Sector' },
   { value: 'academia', label: 'Academia / Research' },
   { value: 'red-cross-red-crescent', label: 'Red Cross / Red Crescent' },
+  { value: 'umbrella-network', label: 'Umbrella body / Network' },
+  { value: 'professional-association', label: 'Professional Association' },
+  { value: 'sports-cultural-club', label: 'Sports / Cultural Club' },
+  { value: 'foundation-trust', label: 'Foundation / Trust' },
+  { value: 'cooperative', label: 'Cooperative' },
+  { value: 'volunteer-youth-movement', label: 'Volunteer / Youth Movement' },
   { value: 'other', label: 'Other' },
 ];
 

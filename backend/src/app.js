@@ -30,6 +30,7 @@ app.use('/api/activity-types', master.activityTypes);
 app.use('/api/beneficiary-groups', master.beneficiaryGroups);
 app.use('/api/events', master.events);
 app.use('/api/disaggregations', master.disaggregations);
+app.use('/api/inform-components', master.informComponents);
 
 app.use('/api/locations', require('./routes/locations.routes'));
 app.use('/api/admin-level-config', require('./routes/adminLevelConfig.routes'));

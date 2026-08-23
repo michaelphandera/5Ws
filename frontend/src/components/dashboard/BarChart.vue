@@ -1,7 +1,7 @@
 <script setup>
 // Shared bar chart with the house mark spec: thin bars, 4px rounded data-ends,
 // recessive grid, tooltips on hover, no legend (identity lives on the axis labels).
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Bar } from 'vue-chartjs';
 import {
   Chart as ChartJS,
@@ -23,7 +23,54 @@ const props = defineProps({
   showValues: { type: Boolean, default: false },
   // Full names for tooltips when axis labels are abbreviated codes.
   tooltipLabels: { type: Array, default: null },
+  // Bars emit `select` with { index, label } on click (pointer cursor on hover).
+  clickable: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(['select']);
+
+const barRef = ref(null);
+
+// Category index for a pointer position in the axis-label gutter (left of the
+// plot for horizontal bars, below it for vertical), or null when outside it.
+// Chart.js only dispatches onClick/onHover INSIDE the chart area, so gutter
+// clicks are handled by native listeners on the wrapper (see template).
+function axisLabelIndex(x, y, chart) {
+  const area = chart?.chartArea;
+  if (!area) return null;
+  const scale = props.horizontal ? chart.scales.y : chart.scales.x;
+  if (!scale) return null;
+  const inGutter = props.horizontal
+    ? x < area.left && y >= area.top && y <= area.bottom
+    : y > area.bottom && x >= area.left && x <= area.right;
+  if (!inGutter) return null;
+  const index = Math.round(scale.getValueForPixel(props.horizontal ? y : x));
+  return index >= 0 && index < props.labels.length ? index : null;
+}
+
+function gutterIndexFromEvent(e) {
+  const chart = barRef.value?.chart;
+  if (!chart) return null;
+  const r = chart.canvas.getBoundingClientRect();
+  return axisLabelIndex(e.clientX - r.x, e.clientY - r.y, chart);
+}
+function onGutterClick(e) {
+  if (!props.clickable) return;
+  const index = gutterIndexFromEvent(e);
+  if (index != null) emit('select', { index, label: props.labels[index] });
+}
+function onGutterMove(e) {
+  if (!props.clickable) return;
+  const chart = barRef.value?.chart;
+  if (!chart) return;
+  // Inside the chart area Chart.js's own onHover owns the cursor.
+  const r = chart.canvas.getBoundingClientRect();
+  const x = e.clientX - r.x;
+  const y = e.clientY - r.y;
+  const a = chart.chartArea;
+  if (a && x >= a.left && x <= a.right && y >= a.top && y <= a.bottom) return;
+  chart.canvas.style.cursor = axisLabelIndex(x, y, chart) != null ? 'pointer' : 'default';
+}
 
 // Inline plugin: draws each bar's value just past its data end.
 const valueLabels = {
@@ -88,6 +135,15 @@ const options = computed(() => {
     animation: false,
     // Leave room for the end-of-bar labels.
     layout: props.showValues ? (props.horizontal ? { padding: { right: 26 } } : { padding: { top: 16 } }) : {},
+    onClick: (evt, elements) => {
+      if (!props.clickable || !elements.length) return;
+      const index = elements[0].index;
+      emit('select', { index, label: props.labels[index] });
+    },
+    onHover: (evt, elements) => {
+      const el = evt.native?.target;
+      if (el) el.style.cursor = props.clickable && elements.length ? 'pointer' : 'default';
+    },
     plugins: {
       legend: { display: false },
       valueLabels: { enabled: props.showValues },
@@ -108,7 +164,11 @@ const options = computed(() => {
 </script>
 
 <template>
-  <div :style="{ height: height + 'px', position: 'relative' }">
-    <Bar :data="data" :options="options" :plugins="[valueLabels]" />
+  <div
+    :style="{ height: height + 'px', position: 'relative' }"
+    @click="onGutterClick"
+    @mousemove="onGutterMove"
+  >
+    <Bar ref="barRef" :data="data" :options="options" :plugins="[valueLabels]" />
   </div>
 </template>

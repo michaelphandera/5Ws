@@ -11,7 +11,13 @@ const props = defineProps({
   items: { type: Array, required: true }, // [{label, value, color}]
   centerLabel: { type: String, default: 'Total' },
   size: { type: Number, default: 170 },
+  // Slices and legend rows emit `select` with { index, label } on click.
+  clickable: { type: Boolean, default: false },
+  // Label of the currently applied filter, for the legend's active state.
+  activeLabel: { type: String, default: '' },
 });
+
+const emit = defineEmits(['select']);
 
 const total = computed(() => props.items.reduce((s, i) => s + (i.value || 0), 0));
 const rows = computed(() =>
@@ -54,11 +60,20 @@ const centerText = {
   },
 };
 
-const options = {
+const options = computed(() => ({
   cutout: '70%',
   responsive: true,
   maintainAspectRatio: false,
   animation: false,
+  onClick: (evt, elements) => {
+    if (!props.clickable || !elements.length) return;
+    const index = elements[0].index;
+    emit('select', { index, label: props.items[index]?.label });
+  },
+  onHover: (evt, elements) => {
+    const el = evt.native?.target;
+    if (el) el.style.cursor = props.clickable && elements.length ? 'pointer' : 'default';
+  },
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -72,7 +87,7 @@ const options = {
       },
     },
   },
-};
+}));
 </script>
 
 <template>
@@ -81,12 +96,20 @@ const options = {
       <Doughnut :data="data" :options="options" :plugins="[centerText]" />
     </div>
     <div class="donut-legend">
-      <div v-for="r in rows" :key="r.label" class="dl-row">
+      <component
+        :is="clickable ? 'button' : 'div'"
+        v-for="(r, i) in rows"
+        :key="r.label"
+        class="dl-row"
+        :class="{ 'dl-click': clickable, 'dl-active': activeLabel && activeLabel === r.label }"
+        :type="clickable ? 'button' : undefined"
+        @click="clickable && emit('select', { index: i, label: r.label })"
+      >
         <span class="dl-dot" :style="{ background: r.color }"></span>
         <span class="dl-label">{{ r.label }}</span>
         <span class="dl-value">{{ (r.value || 0).toLocaleString() }}</span>
         <span class="dl-pct">{{ r.pct }}%</span>
-      </div>
+      </component>
     </div>
   </div>
 </template>
@@ -99,6 +122,10 @@ const options = {
   gap: 8px; align-items: center; font-size: 12.5px;
 }
 .dl-dot { width: 9px; height: 9px; border-radius: 50%; }
+/* Legend rows double as filter toggles when the chart is clickable. */
+button.dl-row { background: none; border: none; padding: 0; font: inherit; text-align: inherit; cursor: pointer; }
+.dl-click:hover .dl-label { color: var(--ink, #17263c); }
+.dl-active .dl-label { color: var(--ink, #17263c); text-decoration: underline; text-underline-offset: 2px; }
 .dl-label { color: var(--ink-2, #4b5563); font-weight: 600; }
 .dl-value { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink, #17263c); text-align: right; }
 .dl-pct { color: var(--ink-3, #8a93a2); font-size: 11.5px; font-variant-numeric: tabular-nums; text-align: right; }

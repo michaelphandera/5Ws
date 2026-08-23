@@ -76,7 +76,7 @@ exports.create = catchAsync(async (req, res) => {
 exports.update = catchAsync(async (req, res) => {
   const doc = await Location.findById(req.params.id);
   if (!doc) throw httpError(404, 'Location not found');
-  const { name, code, centroid, geometry, active } = req.body;
+  const { name, code, centroid, geometry, active, isoCode, informAdm1, informAdm2, plusCode, provisional, notes } = req.body;
   if (name !== undefined && name !== doc.name) {
     // Renaming keeps the slug/path stable — path is an internal key, name is display.
     doc.name = name;
@@ -86,6 +86,12 @@ exports.update = catchAsync(async (req, res) => {
   if (centroid !== undefined) doc.centroid = centroid;
   if (geometry !== undefined) doc.geometry = geometry;
   if (active !== undefined) doc.active = active;
+  if (isoCode !== undefined) doc.isoCode = isoCode;
+  if (informAdm1 !== undefined) doc.informAdm1 = informAdm1;
+  if (informAdm2 !== undefined) doc.informAdm2 = informAdm2;
+  if (plusCode !== undefined) doc.plusCode = plusCode;
+  if (provisional !== undefined) doc.provisional = provisional;
+  if (notes !== undefined) doc.notes = notes;
   await doc.save();
   res.json(doc);
 });

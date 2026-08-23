@@ -13,6 +13,16 @@ const locationSchema = new mongoose.Schema(
       lng: { type: Number },
     },
     geometry: { type: mongoose.Schema.Types.Mixed, default: null },
+    // National reference codes (REV1 gazetteer): ISO 3166-2:SC and the INFORM
+    // SADC model's admin tiers. "TO CONFIRM" is stored verbatim where the
+    // allocation awaits NBS/DRDM confirmation — deliberately not guessed.
+    isoCode: { type: String, trim: true },
+    informAdm1: { type: String, trim: true },
+    informAdm2: { type: String, trim: true },
+    plusCode: { type: String, trim: true },
+    // Provisional = unit recorded but placement/allocation pending DRDM confirmation.
+    provisional: { type: Boolean, default: false },
+    notes: { type: String, trim: true },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }

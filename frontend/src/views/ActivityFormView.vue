@@ -349,7 +349,7 @@ async function save() {
 
       <div class="card">
         <div class="form-section-title"><span class="step">5</span> Notes</div>
-        <p class="card-sub">Anything else worth recording about this activity (optional)</p>
+        <p class="card-sub">Anything else worth recording about this activity (optional — Disaster / Emergency &amp; DRM context is set on the project)</p>
         <label class="field">
           <span>Notes</span>
           <textarea v-model="form.notes" rows="2" />

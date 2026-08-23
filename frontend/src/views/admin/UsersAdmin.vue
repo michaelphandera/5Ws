@@ -7,7 +7,7 @@ import Pager from '../../components/common/Pager.vue';
 import { useLookupsStore } from '../../stores/lookups';
 import { useToast } from '../../composables/toast';
 import { useClientTable } from '../../composables/clientTable';
-import { downloadCsv } from '../../utils/csv';
+import { downloadCsv, exportFilename } from '../../utils/csv';
 
 const toast = useToast();
 
@@ -28,7 +28,7 @@ const { q, page, pages, filtered, paged } = useClientTable(users, {
 
 function exportCsv() {
   downloadCsv(
-    'users.csv',
+    exportFilename('Users', 'csv'),
     ['Username', 'Name', 'Email', 'Role', 'Organization', 'Status'],
     filtered.value.map((u) => [
       u.username,

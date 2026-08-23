@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node seed/seed.js",
+    "migrate:rev1": "node seed/migrate-rev1.js",
+    "migrate:drm-project": "node seed/migrate-drm-project.js",
     "seed:demo": "node seed/seed-demo.js",
     "seed:demo:remove": "node seed/seed-demo.js --remove"
   },

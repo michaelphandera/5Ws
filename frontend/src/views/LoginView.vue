@@ -91,13 +91,13 @@ function showAccountHint() {
 
       <!-- Overlapping DRDM emblem medallion -->
       <div class="avatar-ring">
-        <img :src="emblemUrl" alt="Disaster Risk Management Division, Seychelles" />
+        <img :src="emblemUrl" alt="Department of Risk and Disaster Management and DICT, Seychelles" />
       </div>
 
       <form class="form-body" @submit.prevent="submit">
         <div class="lockup">
-          <div class="lockup-title">5Ws Seychelles</div>
-          <div class="lockup-sub">Civil Society Coordination Platform</div>
+          <div class="lockup-title">Civil Society Coordination Platform</div>
+          <div class="lockup-sub">5Ws Seychelles</div>
         </div>
         <label class="field">
           <span>Username or Email</span>
@@ -190,7 +190,8 @@ function showAccountHint() {
 
 .lockup { text-align: center; margin-bottom: 16px; }
 .lockup-title {
-  font-size: 20px;
+  /* Long title — a step below the old 20px so it sits comfortably on the card */
+  font-size: 17px;
   font-weight: 900;
   color: #111;
   line-height: 1.15;

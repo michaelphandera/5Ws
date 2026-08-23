@@ -7,6 +7,8 @@ const DisaggregationCategory = require('../models/DisaggregationCategory');
 const { catchAsync } = require('../middleware/errorHandler');
 const { buildActivityFilter } = require('./activities.controller');
 const { toCsv } = require('../utils/csv');
+const { DRM_PHASE_LABELS } = require('../utils/drm');
+const { exportFilename } = require('../utils/exportName');
 
 // Mirrors frontend/src/utils/orgTypes.js.
 const ORG_TYPE_LABELS = {
@@ -21,6 +23,12 @@ const ORG_TYPE_LABELS = {
   'private-sector': 'Private Sector',
   academia: 'Academia / Research',
   'red-cross-red-crescent': 'Red Cross / Red Crescent',
+  'umbrella-network': 'Umbrella body / Network',
+  'professional-association': 'Professional Association',
+  'sports-cultural-club': 'Sports / Cultural Club',
+  'foundation-trust': 'Foundation / Trust',
+  cooperative: 'Cooperative',
+  'volunteer-youth-movement': 'Volunteer / Youth Movement',
   other: 'Other',
 };
 const orgTypeLabel = (v) => ORG_TYPE_LABELS[v] || v || '';
@@ -40,8 +48,11 @@ async function buildActivityMatrix(query) {
       .populate([
         {
           path: 'project',
-          select: 'title status event',
-          populate: { path: 'event', select: 'name type glideNumber' },
+          select: 'title status event drmPhase informComponent dataSource',
+          populate: [
+            { path: 'event', select: 'name type glideNumber' },
+            { path: 'informComponent', select: 'name dimension category' },
+          ],
         },
         { path: 'organization', select: 'name acronym' },
         { path: 'sector', select: 'name' },
@@ -86,9 +97,11 @@ async function buildActivityMatrix(query) {
 
   const headers = [
     'Organization', 'Acronym', 'Project', 'Project Status', 'Activity', 'Sector',
+    'DRM Phase', 'INFORM Component', 'INFORM Dimension',
     ...levelHeaders,
     'Start Date', 'End Date',
     'Disaster Event', 'GLIDE Number',
+    'Data Source',
     'Beneficiary Group',
     'Targeted Total',
     ...DEMO_LABELS.map((l) => `Targeted ${l}`),
@@ -97,9 +110,11 @@ async function buildActivityMatrix(query) {
   const hxlRow = [
     '#org+name', '#org+acronym', '#activity+project', '#status+project',
     '#activity+name', '#sector+name',
+    '#activity+phase', '#hazard+name', '#hazard+dimension',
     ...levelHxl,
     '#date+start', '#date+end',
     '#crisis+name', '#crisis+code+glide',
+    '#meta+source',
     '#beneficiary+type',
     '#beneficiary+targeted',
     ...DEMO_HXL.map((a) => `#beneficiary+targeted${a}`),
@@ -120,9 +135,12 @@ async function buildActivityMatrix(query) {
           a.organization?.name || '', a.organization?.acronym || '',
           a.project?.title || '', a.project?.status || '',
           a.title, a.sector?.name || '',
+          DRM_PHASE_LABELS[a.project?.drmPhase] || '',
+          a.project?.informComponent?.name || '', a.project?.informComponent?.dimension || '',
           ...levelCells,
           fmtDate(a.startDate), fmtDate(a.endDate),
           a.project?.event?.name || '', a.project?.event?.glideNumber || '',
+          a.project?.dataSource || '',
           b?.group?.name || '',
           b?.targetedTotal ?? '',
           ...DEMO_KEYS.map((k) => b?.disaggregation?.targeted?.[k] ?? ''),
@@ -138,7 +156,7 @@ exports.buildActivityMatrix = buildActivityMatrix;
 exports.activitiesCsv = catchAsync(async (req, res) => {
   const { headers, hxlRow, rows } = await buildActivityMatrix(req.query);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="5w-activities.csv"');
+  res.setHeader('Content-Disposition', `attachment; filename="${exportFilename('Activities', 'csv')}"`);
   // BOM so Excel detects UTF-8.
   res.send(String.fromCharCode(0xfeff) + toCsv(headers, [hxlRow, ...rows]));
 });
@@ -161,7 +179,7 @@ exports.activitiesXlsx = catchAsync(async (req, res) => {
     'Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
-  res.setHeader('Content-Disposition', 'attachment; filename="5w-activities.xlsx"');
+  res.setHeader('Content-Disposition', `attachment; filename="${exportFilename('Activities', 'xlsx')}"`);
   await wb.xlsx.write(res);
   res.end();
 });
@@ -170,14 +188,21 @@ exports.activitiesXlsx = catchAsync(async (req, res) => {
 
 exports.organizationsXlsx = catchAsync(async (req, res) => {
   const orgs = await Organization.find({ active: { $ne: false } })
-    .populate('commission', 'name')
+    .populate([
+      { path: 'commission', select: 'name' },
+      { path: 'otherSectors', select: 'name' },
+      { path: 'hqDistrict', select: 'name code' },
+    ])
     .sort('name')
     .lean();
 
   const headers = [
-    'Name', 'Acronym', 'Type', 'Commission / Sector', 'Aim', 'Description',
-    'Date Founded', 'Chairperson', 'Emails', 'Phones',
-    'Postal Address', 'Physical Address', 'Webpage', 'Latitude', 'Longitude',
+    'Name', 'Acronym', 'Type', 'Registration No.',
+    'HQ District', 'HQ District P-code',
+    'Primary Sector', 'Also Works In', 'Aim', 'Description',
+    'Date Founded', 'Chairperson', 'Contact Person', 'Emails', 'Phones',
+    'Postal Address', 'Physical Address', 'Website / Social',
+    'Latitude', 'Longitude', 'Notes',
   ];
 
   const wb = new ExcelJS.Workbook();
@@ -187,12 +212,14 @@ exports.organizationsXlsx = catchAsync(async (req, res) => {
   headerRow.font = { bold: true };
   for (const o of orgs) {
     ws.addRow([
-      o.name, o.acronym || '', orgTypeLabel(o.type), o.commission?.name || '',
+      o.name, o.acronym || '', orgTypeLabel(o.type), o.registrationNo || '',
+      o.hqDistrict?.name || '', o.hqDistrict?.code || '',
+      o.commission?.name || '', (o.otherSectors || []).map((s) => s.name).join('; '),
       o.aim || '', o.description || '',
-      o.dateFounded || '', o.chairperson || '',
+      o.dateFounded || '', o.chairperson || '', o.contactPerson || '',
       (o.emails || []).join('; '), (o.phones || []).join('; '),
       o.postalAddress || '', o.physicalAddress || '', o.webpage || '',
-      o.location?.lat ?? '', o.location?.lng ?? '',
+      o.location?.lat ?? '', o.location?.lng ?? '', o.notes || '',
     ]);
   }
   ws.views = [{ state: 'frozen', ySplit: 1 }];
@@ -201,7 +228,7 @@ exports.organizationsXlsx = catchAsync(async (req, res) => {
     'Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
-  res.setHeader('Content-Disposition', 'attachment; filename="5ws-organizations.xlsx"');
+  res.setHeader('Content-Disposition', `attachment; filename="${exportFilename('Organizations', 'xlsx')}"`);
   await wb.xlsx.write(res);
   res.end();
 });
@@ -237,6 +264,7 @@ exports.organizationsKml = catchAsync(async (req, res) => {
           ${balloonRow('Commission / Sector', o.commission?.name)}
           ${balloonRow('About', o.description || o.aim)}
           ${balloonRow('Chairperson', o.chairperson)}
+          ${balloonRow('Contact person', o.contactPerson)}
           ${balloonRow('Email', (o.emails || []).join('; '))}
           ${balloonRow('Phone', (o.phones || []).join('; '))}
           ${balloonRow('Physical address', o.physicalAddress)}
@@ -272,6 +300,6 @@ exports.organizationsKml = catchAsync(async (req, res) => {
 </kml>`;
 
   res.setHeader('Content-Type', 'application/vnd.google-earth.kml+xml');
-  res.setHeader('Content-Disposition', 'attachment; filename="5ws-organizations.kml"');
+  res.setHeader('Content-Disposition', `attachment; filename="${exportFilename('Organizations', 'kml')}"`);
   res.send(kml);
 });

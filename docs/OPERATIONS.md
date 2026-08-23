@@ -68,8 +68,10 @@ Also back up `backend/.env` (secrets) and any uploaded GeoJSON boundaries
 
 ## Seeding & migrations
 
-- `npm run seed` (backend) is idempotent — upserts sectors, locations, groups, the 73 CEPS organizations and the admin user. `npm run seed -- --iasc` adds the 11 IASC clusters.
-- One-off migrations live in `backend/seed/` (`migrate-org-refs.js`, `migrate-simplify.js`) and are re-runnable.
+- `npm run seed` (backend) is idempotent — upserts all 19 sectors (CEPS + IASC + DRR/CCA/LIV), the 53-unit gazetteer, 12 beneficiary groups, 32 INFORM components, the 73 CEPS organizations and the admin user. Re-running refreshes official location names/reference codes and fills blank org acronyms (admin-entered acronyms are kept).
+- **Upgrading an existing database to the REV1 gazetteer:** from `backend/` run `npm run migrate:rev1` once, then `npm run seed` (dotenv requires running from the `backend/` directory). The migration adds admin level 3, applies the official renames/ISO/INFORM codes by P-code, and moves Anse Kerlan under Grand'Anse Praslin.
+- **Moving DRM context to the project level:** from `backend/` run `npm run migrate:drm-project` once (safe to re-run). It rolls each project's activities' DRM Phase / INFORM component / data source up to the project (most common value wins; values already set on the project are kept) and clears the fields from activities. The Disaster / Emergency & DRM context is one project-level section from this point on.
+- One-off migrations live in `backend/seed/` (`migrate-org-refs.js`, `migrate-simplify.js`, `migrate-rev1.js`) and are re-runnable. **Never run `migrate-simplify.js` after `migrate-rev1.js`** — it unsets the reintroduced `drmPhase` field.
 
 ## Upgrade checklist
 

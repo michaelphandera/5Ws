@@ -28,10 +28,15 @@ const problemRows = computed(() => (preview.value?.rows || []).filter((r) => r.e
 
 function downloadTemplate() {
   api.get(props.templateUrl, { responseType: 'blob' }).then((res) => {
+    // The server names the file per the official convention
+    // (Seychelles_CSO_5W_..._DDMMYY.xlsx) — take it from Content-Disposition.
+    const cd = res.headers['content-disposition'] || '';
+    const filename =
+      /filename="?([^";]+)"?/.exec(cd)?.[1] || props.templateUrl.split('/').slice(-1)[0];
     const url = URL.createObjectURL(res.data);
     const a = document.createElement('a');
     a.href = url;
-    a.download = props.templateUrl.split('/').slice(-1)[0];
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -109,6 +114,17 @@ async function commit() {
           </span>
           · {{ preview.summary.warningRows }} with warnings ·
           <b>{{ createCount }}</b> {{ entityLabel }} will be created
+        </div>
+
+        <div
+          v-if="preview.summary.ignoredColumns?.length"
+          class="card"
+          style="padding: 10px 12px; margin-bottom: 12px; border-left: 3px solid #935610; font-size: 12.5px"
+        >
+          <b>Columns not imported:</b>
+          <div v-for="ic in preview.summary.ignoredColumns" :key="ic.column" style="color: #935610">
+            ⚠ <b>{{ ic.column }}</b> — {{ ic.reason }}
+          </div>
         </div>
 
         <div v-if="problemRows.length" class="table-scroll" style="max-height: 260px; overflow-y: auto; margin-bottom: 12px">

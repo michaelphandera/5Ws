@@ -16,7 +16,9 @@ const BeneficiaryGroup = require('../src/models/BeneficiaryGroup');
 const DisasterEvent = require('../src/models/DisasterEvent');
 const Project = require('../src/models/Project');
 const Activity = require('../src/models/Activity');
+const InformComponent = require('../src/models/InformComponent');
 const User = require('../src/models/User');
+const { DRM_PHASES } = require('../src/utils/drm');
 require('../src/models/DisaggregationCategory'); // needed by Activity's pre-validate hook
 
 // Deterministic RNG so re-runs produce identical numbers.
@@ -95,6 +97,9 @@ const DEMO_PROJECTS = [
   ['Interfaith Community Support Network', ['FBO', 'SOC'], 'completed', '2025-05-01', '2026-04-30', 96000, 'SCR', null],
   ['Emergency Logistics Readiness — Inner Islands', ['LOG'], 'planned', '2026-09-15', '2027-03-15', 88000, 'USD', 0],
   ['Clean Shores — Marine Litter Programme', ['ENV'], 'completed', '2025-04-01', '2026-03-31', 310000, 'SCR', null],
+  ['Community Flood Preparedness — Anse Kerlan & Grand\'Anse', ['DRR'], 'ongoing', '2026-03-01', '2027-02-28', 210000, 'SCR', null],
+  ['Climate-Resilient Fisheries Adaptation', ['CCA', 'LIV'], 'ongoing', '2026-05-01', '2027-04-30', 480000, 'SCR', null],
+  ['Island Livelihoods Recovery — Inner Islands', ['LIV'], 'planned', '2026-11-01', '2027-10-31', 150000, 'USD', null],
 ];
 
 const ACTIVITY_VERBS = {
@@ -111,7 +116,27 @@ const ACTIVITY_VERBS = {
   FSC: ['Fish processing & storage training', 'Community seed bank setup', 'Backyard farming starter packs'],
   FBO: ['Neighbourhood support circles', 'Volunteer chaplaincy visits', 'Community solidarity kitchens'],
   LOG: ['Prepositioned stock audits', 'Volunteer drivers roster training', 'Warehouse readiness drills'],
+  DRR: ['Community evacuation drills', 'Flood early-warning siren tests', 'District contingency planning workshops'],
+  CCA: ['Rainwater harvesting installations', 'Coastal setback awareness sessions', 'Climate-smart farming demonstrations'],
+  LIV: ['Fisher gear replacement grants', 'Home-business starter kits', 'Savings group facilitation'],
 };
+
+// Provenance strings for the demo activities' Data Source field (REV1).
+const DATA_SOURCES = [
+  'Organisation self-report',
+  'DRDM sitrep',
+  'Partner field report',
+  'Community committee minutes',
+  'DRDM verified',
+];
+
+// Deterministic (index-derived, no RNG) org register values so --remove can
+// recompute the exact registration numbers it planted and clear only those.
+const CONTACT_FIRST = ['Marie', 'Jean', 'Anne', 'David', 'Sandra', 'Paul', 'Lucy', 'Marc', 'Nadia', 'Terry', 'Brigitte', 'Ronny', 'Sheila', 'Kevin', 'Doris', 'Alain'];
+const CONTACT_LAST = ['Payet', 'Hoareau', 'Adam', 'Laurence', 'Cedras', 'Dogley', 'Camille', 'Morel', 'Servina', 'Jumeau', 'Pool', 'Souyave', 'Ernesta', 'Labiche', 'Vidot', 'Rose'];
+const demoRegistrationNo = (i) => `CSO/RA/${2000 + (i % 22)}/${String(101 + i * 7).padStart(3, '0')}`;
+const demoContactPerson = (i) =>
+  `${CONTACT_FIRST[i % CONTACT_FIRST.length]} ${CONTACT_LAST[(i * 3 + 1) % CONTACT_LAST.length]}`;
 
 // Beneficiary mixes keyed by group name; per the form's rules, age/gender-bounded
 // groups carry a female/male split, General Population the full category grid.
@@ -163,10 +188,21 @@ function beneficiariesFor(groupsByName) {
   }
   if (rand() < 0.35) {
     mixes.push({
-      group: groupsByName.get('persons with disabilities'),
+      group: groupsByName.get('special needs'),
       targeted: {},
       targetedTotal: between(10, 45),
     });
+  }
+  // Hazard-exposure groups from the REV1 round (Fishers, Farmers, ...).
+  if (rand() < 0.3) {
+    const extra = pick([
+      'fishers',
+      'farmers & smallholders',
+      'low-income households',
+      'households in high-risk / flood-prone zones',
+      'migrant workers',
+    ]);
+    mixes.push({ group: groupsByName.get(extra), targeted: {}, targetedTotal: between(15, 120) });
   }
   return mixes
     .filter((m) => m.group)
@@ -194,20 +230,37 @@ async function main() {
       { 'location.lat': { $in: ORG_POINTS.map((pt) => pt.lat) } },
       { $unset: { location: 1 } }
     );
-    console.log(`Removed: ${p.deletedCount} projects, ${a.deletedCount} activities, ${e.deletedCount} events; cleared ${o.modifiedCount} org points`);
+    // Register enrichment: registration numbers are index-derived, so the exact
+    // demo set can be recomputed here — only orgs still carrying one of those
+    // numbers get their demo register fields cleared.
+    const regNos = DEMO_PROJECTS.map((_, i) => demoRegistrationNo(i));
+    const r = await Organization.updateMany(
+      { registrationNo: { $in: regNos } },
+      { $unset: { registrationNo: 1, hqDistrict: 1, contactPerson: 1, otherSectors: 1 } }
+    );
+    console.log(`Removed: ${p.deletedCount} projects, ${a.deletedCount} activities, ${e.deletedCount} events; cleared ${o.modifiedCount} org points, ${r.modifiedCount} org register records`);
     await mongoose.disconnect();
     return;
   }
 
-  const [admin, sectors, districts, groups, orgs] = await Promise.all([
+  const [admin, sectors, districts, groups, informComponents, orgs] = await Promise.all([
     User.findOne({ role: 'admin' }),
     Sector.find().lean(),
     Location.find({ level: 2 }).lean(),
     BeneficiaryGroup.find().lean(),
+    InformComponent.find().lean(),
     Organization.find({ active: true }).sort('name').lean(),
   ]);
   const sectorByCode = new Map(sectors.map((s) => [s.code, s]));
   const groupsByName = new Map(groups.map((g) => [g.name.toLowerCase(), g]));
+  // Natural hazards only — human hazards (Hazardous Material, Conflict ...) read
+  // oddly on community-programme demo activities.
+  const hazardComponents = informComponents.filter(
+    (c) => c.dimension === 'Hazards & Exposure' && c.category === 'Natural'
+  );
+  const drmComponents = hazardComponents.length ? hazardComponents : informComponents;
+  const sortedDistricts = [...districts].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedSectors = [...sectors].sort((a, b) => (a.code || '').localeCompare(b.code || ''));
 
   // Events
   const eventIds = [];
@@ -232,6 +285,36 @@ async function main() {
   }
   console.log(`Org office points set for up to ${Math.min(projectOrgs.length, ORG_POINTS.length)} organizations`);
 
+  // Register enrichment (REV1 fields), only where still unset so admin-entered
+  // values are never clobbered. Values are index-derived (see demoRegistrationNo)
+  // so --remove can identify and clear exactly this set.
+  let enriched = 0;
+  for (let i = 0; i < projectOrgs.length; i++) {
+    const org = projectOrgs[i];
+    const hq = sortedDistricts.length ? sortedDistricts[(i * 5) % sortedDistricts.length] : null;
+    const others = sortedSectors
+      .filter((s) => String(s._id) !== String(org.commission))
+      .filter((_, idx) => idx % Math.max(2, Math.ceil(sortedSectors.length / 2)) === i % 2)
+      .slice(0, 1 + (i % 2))
+      .map((s) => s._id);
+    const res = await Organization.updateOne(
+      {
+        _id: org._id,
+        $or: [{ registrationNo: null }, { registrationNo: '' }, { registrationNo: { $exists: false } }],
+      },
+      {
+        $set: {
+          registrationNo: demoRegistrationNo(i),
+          contactPerson: demoContactPerson(i),
+          ...(hq ? { hqDistrict: hq._id } : {}),
+          otherSectors: others,
+        },
+      }
+    );
+    if (res.modifiedCount) enriched++;
+  }
+  console.log(`Org register fields (reg. no / HQ district / contact / sectors) set on ${enriched} organizations`);
+
   let createdProjects = 0;
   let createdActivities = 0;
 
@@ -244,6 +327,9 @@ async function main() {
     const org = projectOrgs[i % projectOrgs.length];
     const partners = rand() < 0.4 ? pickN(orgs.filter((o) => o._id !== org._id), between(1, 2)).map((o) => o._id) : [];
 
+    // ~70% of demo projects carry the optional Disaster / Emergency & DRM
+    // context section (project-level; activities inherit it).
+    const withDrm = drmComponents.length && rand() < 0.7;
     const project = await Project.create({
       title,
       organization: org._id,
@@ -253,6 +339,13 @@ async function main() {
       endDate: new Date(end),
       status,
       event: evIdx != null ? eventIds[evIdx] : undefined,
+      ...(withDrm
+        ? {
+            drmPhase: pick(DRM_PHASES),
+            informComponent: pick(drmComponents)._id,
+            dataSource: pick(DATA_SOURCES),
+          }
+        : {}),
       budget: { amount, currency },
       createdBy: admin?._id,
     });

@@ -10,6 +10,7 @@ import ExportMenu from '../components/common/ExportMenu.vue';
 import { useAuthStore } from '../stores/auth';
 import { useLookupsStore } from '../stores/lookups';
 import { useToast } from '../composables/toast';
+import { exportFilename } from '../utils/csv';
 
 const toast = useToast();
 
@@ -74,7 +75,7 @@ function exportMatrix(fmt) {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `5w-activities.${fmt}`;
+      a.download = exportFilename('Activities', fmt);
       a.click();
       URL.revokeObjectURL(url);
     });

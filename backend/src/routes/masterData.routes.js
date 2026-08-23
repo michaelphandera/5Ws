@@ -11,6 +11,7 @@ const ActivityType = require('../models/ActivityType');
 const BeneficiaryGroup = require('../models/BeneficiaryGroup');
 const DisasterEvent = require('../models/DisasterEvent');
 const DisaggregationCategory = require('../models/DisaggregationCategory');
+const InformComponent = require('../models/InformComponent');
 const Activity = require('../models/Activity');
 const Project = require('../models/Project');
 const User = require('../models/User');
@@ -38,7 +39,11 @@ function crudRouter(ctrl, { allowOwnOrgUpdate = false } = {}) {
 const organizations = crudRouter(
   makeCrudController(Organization, {
     searchFields: ['name', 'acronym'],
-    populate: { path: 'commission', select: 'name code color' },
+    populate: [
+      { path: 'commission', select: 'name code color' },
+      { path: 'otherSectors', select: 'name code color' },
+      { path: 'hqDistrict', select: 'name code level' },
+    ],
     isReferenced: async (id) =>
       !!(await Activity.exists({ organization: id })) ||
       !!(await Project.exists({ organization: id })) ||
@@ -72,7 +77,16 @@ const events = crudRouter(
   makeCrudController(DisasterEvent, {
     searchFields: ['name', 'glideNumber'],
     sort: '-startDate',
-    isReferenced: async (id) => !!(await Activity.exists({ event: id })),
+    isReferenced: async (id) =>
+      !!(await Project.exists({ event: id })) || !!(await Activity.exists({ event: id })),
+  })
+);
+
+const informComponents = crudRouter(
+  makeCrudController(InformComponent, {
+    sort: 'dimension order name',
+    searchFields: ['name', 'category'],
+    isReferenced: async (id) => !!(await Project.exists({ informComponent: id })),
   })
 );
 
@@ -92,4 +106,12 @@ const disaggregations = crudRouter(
   })
 );
 
-module.exports = { organizations, sectors, activityTypes, beneficiaryGroups, events, disaggregations };
+module.exports = {
+  organizations,
+  sectors,
+  activityTypes,
+  beneficiaryGroups,
+  events,
+  disaggregations,
+  informComponents,
+};

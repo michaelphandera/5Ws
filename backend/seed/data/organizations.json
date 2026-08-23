@@ -18,7 +18,7 @@
   },
   {
     "name": "AIESEC Seychelles",
-    "acronym": null,
+    "acronym": "AIESEC",
     "aim": "To develop leadership qualities and cross-cultural understanding in the Youth.",
     "dateFounded": "2015, 17 August",
     "chairperson": "Mr. Bogar Milan",
@@ -169,7 +169,7 @@
   },
   {
     "name": "Better Life Foundation",
-    "acronym": null,
+    "acronym": "BLF",
     "aim": "Sustainable improvement in People’s life.",
     "dateFounded": "2012, 12 July",
     "chairperson": "Mr. Marco Francis",
@@ -202,7 +202,7 @@
   },
   {
     "name": "Brother Dudes Sovereign Supporters",
-    "acronym": null,
+    "acronym": "BDSS",
     "aim": "To work with the less fortunate.",
     "dateFounded": "2015, 11 August",
     "chairperson": "Mr. Dean Padayachy",
@@ -235,7 +235,7 @@
   },
   {
     "name": "Cancer Concern Association",
-    "acronym": null,
+    "acronym": "CCAS",
     "aim": "Educate people on Cancer.",
     "dateFounded": "2000, 14 February",
     "chairperson": "Bishop French Chang-Him",
@@ -251,7 +251,7 @@
   },
   {
     "name": "Caritas of Seychelles",
-    "acronym": null,
+    "acronym": "CARITAS",
     "aim": "To help the less fortunate members of our society.",
     "dateFounded": "1975",
     "chairperson": "Bishop Denis Wiehe",
@@ -267,7 +267,7 @@
   },
   {
     "name": "Centre D’Acceuil de la Rosiere",
-    "acronym": null,
+    "acronym": "CADR",
     "aim": "To assist in rehabilitation of former addicts of alcohol and drugs.",
     "dateFounded": "2009, 3 September",
     "chairperson": "Bishop Denis Wiehe",
@@ -301,7 +301,7 @@
   },
   {
     "name": "Compassion",
-    "acronym": null,
+    "acronym": "COMP",
     "aim": "To empower youth with training, coaching and exposure.",
     "dateFounded": "2010, 21 June",
     "chairperson": "Mr. Kelvin Anacourra",
@@ -317,7 +317,7 @@
   },
   {
     "name": "Cooperative des Artisans",
-    "acronym": null,
+    "acronym": "CDA",
     "aim": "To help craftspeople help themselves.",
     "dateFounded": "1938",
     "chairperson": "Mrs. Mariette Mc Kelvey",
@@ -367,7 +367,7 @@
   },
   {
     "name": "Friends of prison",
-    "acronym": null,
+    "acronym": "FOP",
     "aim": "Contribute towards rehabilitation of prisoners.",
     "dateFounded": "2008, 23 June",
     "chairperson": "Ms. Marie-Claire Elizabeth",
@@ -548,7 +548,7 @@
   },
   {
     "name": "Les Li Viv",
-    "acronym": null,
+    "acronym": "LLV",
     "aim": "To uphold the upmost respect for human life from conception.",
     "dateFounded": "1993, March",
     "chairperson": "Mrs Catherine Belmont",
@@ -596,7 +596,7 @@
   },
   {
     "name": "Lions Club of Seychelles",
-    "acronym": null,
+    "acronym": "LCS",
     "aim": "To serve.",
     "dateFounded": "2015, 31 March",
     "chairperson": "Mr. Ramakrishnan Pillay",
@@ -612,7 +612,7 @@
   },
   {
     "name": "Love and Care Association",
-    "acronym": null,
+    "acronym": "LACA",
     "aim": "To defend, Lobby and advocate for creation of employment for the disabled and parents.",
     "dateFounded": "2012, 19 May",
     "chairperson": "Ms. Anne Jacques",
@@ -676,7 +676,7 @@
   },
   {
     "name": "National Spiritual Assembly of the Bahai’s of Seychelles",
-    "acronym": null,
+    "acronym": "NSABS",
     "aim": "Building a Peaceful society through Individual and Societal transformation.",
     "dateFounded": "1952",
     "chairperson": "Mr. Antonio Gopal",
@@ -692,7 +692,7 @@
   },
   {
     "name": "Nature Seychelles",
-    "acronym": null,
+    "acronym": "NATSEY",
     "aim": "Conservation of birds and their habitats.",
     "dateFounded": "1930",
     "chairperson": "Mr. Antoine Moustache",
@@ -740,7 +740,7 @@
   },
   {
     "name": "PRO-ART Seychelles",
-    "acronym": null,
+    "acronym": "PROART",
     "aim": "To promote ART and ARTISTIL works in Seychelles.",
     "dateFounded": "2005, 23 August",
     "chairperson": "Mr. Danny Sopha",
@@ -756,7 +756,7 @@
   },
   {
     "name": "Science et Sport",
-    "acronym": null,
+    "acronym": "SES",
     "aim": "To create and develop activities in relation with the learning, the Formation and the Practice of physical &amp; sport discipline.",
     "dateFounded": "2013, 4 April",
     "chairperson": "Zaher Hamdan",
@@ -805,7 +805,7 @@
   },
   {
     "name": "Seychelles Bible Society",
-    "acronym": null,
+    "acronym": "SBS",
     "aim": "To translate, produce and distribute the Christian scriptures in kreol Seselwa, our maternal tongue.",
     "dateFounded": "1975",
     "chairperson": "Mrs. Margaret Maillet",
@@ -884,7 +884,7 @@
   },
   {
     "name": "Seychelles Mixed Martial Arts Association",
-    "acronym": null,
+    "acronym": "SMMAA",
     "aim": "To develop the sport of Mixed Martial Arts Association.",
     "dateFounded": "2013, 24 July",
     "chairperson": "Mr. Adrian Nanty",
@@ -1081,7 +1081,7 @@
   },
   {
     "name": "The Voice Association",
-    "acronym": null,
+    "acronym": "TVA",
     "aim": "The Promotion and enforcement of fundamental rights.",
     "dateFounded": "2014, 1 October",
     "chairperson": "Mr. Alexander Pierre",
@@ -1113,7 +1113,7 @@
   },
   {
     "name": "Val D’Endore Farmers Association",
-    "acronym": null,
+    "acronym": "VDFA",
     "aim": "To promote agricultural activities in the Val D'endore region.",
     "dateFounded": "1999, 30 June",
     "chairperson": "Ms. Juliana Brutus",

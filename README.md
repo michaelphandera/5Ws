@@ -5,14 +5,13 @@ A humanitarian-standard **5W coordination system** (OCHA-style) that tracks
 
 | Dimension | Captured as |
 |---|---|
-| **Who** | Organization (seeded with the 73 CEPS member CSOs) |
-| **What** | Sector + activity type |
-| **Where** | Configurable admin-level hierarchy (seeded: Seychelles Regions → Districts) |
-| **When** | Start/end dates + status (planned / ongoing / completed / suspended) |
-| **For Whom** | Beneficiary groups with planned/reached counts |
+| **Who** | Organization (seeded with the 73 CEPS member CSOs, full register fields) |
+| **What** | Sector (19 seeded: 5 CEPS commissions + 11 IASC clusters + DRR / CCA / LIV) |
+| **Where** | Configurable 3-level hierarchy (seeded: Regions → Districts → Localities / Islands, with ISO 3166-2 and INFORM P-codes) |
+| **When** | Start/end dates (status — planned / ongoing / completed — lives on the project) |
+| **For Whom** | Beneficiary groups (12 seeded) with targeted counts |
 | **+1 How many** | Gender × age-group disaggregation (girls/boys 0–17, women/men 18–59, elderly 60+) + PWD |
-| **+1 How** | Budget, funding source, implementation modality (direct / partner) |
-| **DRM context** | Optional link to a disaster event (with GLIDE number) + DRM cycle phase (mitigation / preparedness / response / recovery) |
+| **DRM context** | Optional per activity: DRM cycle phase (prevention & mitigation / preparedness / response / recovery / cross-cutting), INFORM risk component addressed, and data source. Projects link to disaster events (GLIDE numbers). Budget/funding/partners live on the project. |
 
 **Stack:** Vue 3 (Vite, Pinia, Vue Router, Chart.js, Leaflet) · Express 4 · MongoDB (Mongoose 8)
 
@@ -85,18 +84,28 @@ under **Admin → Users**.
   HDX Quick Charts and other HXL-aware tools; admin-unit columns include
   **P-codes** alongside names.
 - **Disaster events (DRM)** — Admin → Disaster Events registers emergencies
-  (hazard type, GLIDE number, status, dates). Activities can be tagged with an
-  event and DRM cycle phase, and the dashboard/exports filter by both — so the
-  same system serves steady-state coordination and emergency response.
-- **International code lists** — location P-codes are editable per unit
-  (Admin → Locations → Edit) to match official COD-AB / ISO 3166-2:SC codes.
-  `npm run seed -- --iasc` adds the 11 **IASC global clusters** as sectors
-  alongside the civil-society commissions.
+  (hazard type, GLIDE number, status, dates). Projects link to an event;
+  activities optionally carry a DRM cycle phase, the INFORM risk component
+  they address (Admin → INFORM Components) and a data source — so the same
+  system serves steady-state coordination and emergency response.
+- **International code lists** — every location carries an editable P-code,
+  ISO 3166-2:SC code and INFORM ADM1/ADM2 P-codes (Admin → Locations → Edit).
+  All 19 sectors (CEPS commissions, IASC clusters, DRR/CCA/LIV) seed by
+  default — the old `--iasc` flag is no longer needed.
 
-## Re-seeding
+## Re-seeding & upgrading
 
-`npm run seed` is idempotent (upserts by natural key). To re-extract the
-organization list from the CEPS directory PDF:
+`npm run seed` is idempotent (upserts by natural key; official location
+names/codes and blank org acronyms are refreshed on re-run). **Existing
+databases** created before the REV1 gazetteer must run the migration first:
+
+```powershell
+cd backend
+npm run migrate:rev1          # once: level 3, REV1 renames/codes, Anse Kerlan move
+npm run seed
+```
+
+To re-extract the organization list from the CEPS directory PDF:
 
 ```powershell
 cd backend

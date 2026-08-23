@@ -12,6 +12,12 @@ const ORG_TYPES = [
   'private-sector',
   'academia',
   'red-cross-red-crescent',
+  'umbrella-network',
+  'professional-association',
+  'sports-cultural-club',
+  'foundation-trust',
+  'cooperative',
+  'volunteer-youth-movement',
   'other',
 ];
 
@@ -37,6 +43,12 @@ const organizationSchema = new mongoose.Schema(
       lng: { type: Number },
     },
     webpage: { type: String, trim: true },
+    // National CSO register fields (REV1): commission stays the PRIMARY sector.
+    registrationNo: { type: String, trim: true },
+    hqDistrict: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    contactPerson: { type: String, trim: true },
+    notes: { type: String, trim: true },
+    otherSectors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Sector' }],
     commission: { type: mongoose.Schema.Types.ObjectId, ref: 'Sector' },
     active: { type: Boolean, default: true },
   },
