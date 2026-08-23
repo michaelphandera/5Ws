@@ -9,10 +9,12 @@ import StatCards from '../components/dashboard/StatCards.vue';
 import BarChart from '../components/dashboard/BarChart.vue';
 import DonutChart from '../components/dashboard/DonutChart.vue';
 import DemographicsCard from '../components/dashboard/DemographicsCard.vue';
+import HeadlineGroups from '../components/dashboard/HeadlineGroups.vue';
 import ActivityMap from '../components/dashboard/ActivityMap.vue';
 import Icon from '../components/common/Icon.vue';
 import ExportMenu from '../components/common/ExportMenu.vue';
 import { exportFilename } from '../utils/csv';
+import { orgTypeLabel } from '../utils/orgTypes';
 
 const dash = useDashboardStore();
 const lookups = useLookupsStore();
@@ -43,6 +45,29 @@ const statusItems = computed(() => {
   const byKey = Object.fromEntries((s.value?.byStatus || []).map((r) => [r.status, r.count]));
   return STATUS_ORDER.map((x) => ({ label: cap(x), value: byKey[x] || 0, color: STATUS_COLORS[x] }));
 });
+
+// Female/male split summed from the gendered disaggregation categories (as public).
+const GENDER_COLORS = { female: '#a23a82', male: '#1d5fad' };
+const genderItems = computed(() => {
+  const d = s.value?.demographics;
+  if (!d) return [];
+  const sums = { female: 0, male: 0 };
+  for (const c of d.categories || []) {
+    if (c.crossCutting || !c.gender || sums[c.gender] === undefined) continue;
+    sums[c.gender] += (d.targeted || {})[c.key] || 0;
+  }
+  return [
+    { label: 'Female', value: sums.female, color: GENDER_COLORS.female },
+    { label: 'Male', value: sums.male, color: GENDER_COLORS.male },
+  ];
+});
+
+// Implementing organizations by type — the "Who" companion to the coverage map (as public).
+const orgTypeData = computed(() => ({
+  labels: (s.value?.byOrgType || []).map((r) => orgTypeLabel(r.type)),
+  values: (s.value?.byOrgType || []).map((r) => r.count),
+}));
+const orgTypeChartHeight = computed(() => Math.max(180, (s.value?.byOrgType || []).length * 26 + 24));
 
 // Ranked areas at the map's current admin level — the glanceable "Where".
 const topAreas = computed(() => (s.value?.byLevel?.[s.value.mapLevel] || []).slice(0, 8));
@@ -208,9 +233,8 @@ async function exportSnapshot(kind) {
         <div>Projects will appear here as organizations register their work.</div>
       </div>
 
-      <!-- Row 1: the tall map pairs with a stacked column (status + demographics)
-           so the right side fills its full height — no dead half-column. -->
-      <div class="grid-2" style="margin-bottom: 16px">
+      <!-- Row 1: map left + organizations-by-type right (mirrors the public page) -->
+      <div class="map-row" style="margin-bottom: 16px">
         <div class="card" ref="mapCard">
           <div class="title-row">
             <div class="card-title">Coverage map</div>
@@ -223,43 +247,26 @@ async function exportSnapshot(kind) {
             :byLevel="s.byLevel"
             :maxLevel="s.maxLocLevel"
             :orgMarkers="orgMarkers"
+            :height="480"
             @select-location="selectLocation"
             @select-org="openOrgProfile"
           />
         </div>
-        <div class="dash-stack">
-          <div class="card">
-            <div class="title-row">
-              <div class="card-title">Projects by status</div>
-              <button v-if="activeFilterLabels.status" type="button" class="clear-filter" title="Clear the status filter" @click="clearFilter('status')">
-                <span class="cf-label">{{ activeFilterLabels.status }}</span> <span class="cf-x">✕</span>
-              </button>
-            </div>
-            <div class="card-sub">When — share of projects in each state · click to filter</div>
-            <DonutChart
-              :items="statusItems"
-              centerLabel="Projects"
-              :size="150"
-              clickable
-              :activeLabel="dash.filters.status ? cap(dash.filters.status) : ''"
-              @select="onStatusSelect"
-            />
+
+        <div class="card">
+          <div class="card-title">Who — organizations by type</div>
+          <div class="card-sub">Implementing organizations in the current selection</div>
+          <div v-if="!orgTypeData.labels.length" class="empty" style="padding: 24px 12px">
+            No implementing organizations under the current filters.
           </div>
-          <div class="card">
-            <div class="title-row">
-              <div class="card-title">Who is targeted — demographics</div>
-              <button v-if="activeFilterLabels.demographic" type="button" class="clear-filter" title="Clear the demographic filter" @click="clearFilter('demographic')">
-                <span class="cf-label">{{ activeFilterLabels.demographic }}</span> <span class="cf-x">✕</span>
-              </button>
-            </div>
-            <div class="card-sub">For Whom — targeted beneficiaries by disaggregation category · click to filter</div>
-            <DemographicsCard
-              :demographics="s.demographics"
-              clickable
-              :activeKey="dash.filters.demographic"
-              @select="onDemographicSelect"
-            />
-          </div>
+          <BarChart
+            v-else
+            :labels="orgTypeData.labels"
+            :values="orgTypeData.values"
+            horizontal
+            showValues
+            :height="orgTypeChartHeight"
+          />
         </div>
       </div>
 
@@ -300,6 +307,36 @@ async function exportSnapshot(kind) {
             </button>
           </div>
         </div>
+        <div class="card flex-card">
+          <div class="spread">
+            <div>
+              <div class="title-row">
+                <div class="card-title">When — project status</div>
+                <button v-if="activeFilterLabels.status" type="button" class="clear-filter" title="Clear the status filter" @click="clearFilter('status')">
+                  <span class="cf-label">{{ activeFilterLabels.status }}</span> <span class="cf-x">✕</span>
+                </button>
+              </div>
+              <div class="card-sub">When — share of projects in each state · click to filter</div>
+              <DonutChart
+                :items="statusItems"
+                centerLabel="Projects"
+                :size="150"
+                clickable
+                :activeLabel="dash.filters.status ? cap(dash.filters.status) : ''"
+                @select="onStatusSelect"
+              />
+            </div>
+            <hr class="card-divider" />
+            <div>
+              <div class="card-title">For Whom — targeted, female / male</div>
+              <DonutChart :items="genderItems" centerLabel="Targeted" :size="150" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: ranked areas + emergency context (mirrors the public page) -->
+      <div class="grid-2" style="margin-bottom: 16px">
         <div class="card">
           <div class="title-row">
             <div class="card-title">Most active {{ unitLabel.toLowerCase() }}s</div>
@@ -328,11 +365,8 @@ async function exportSnapshot(kind) {
             </span>
           </button>
         </div>
-      </div>
 
-      <!-- Row 3: events pairs with latest updates; spans the row when alone. -->
-      <div class="grid-2" style="margin-bottom: 16px">
-        <div class="card" :style="s.recentProjects && s.recentProjects.length ? '' : 'grid-column: 1 / -1'">
+        <div class="card">
           <div class="title-row">
             <div class="card-title">Disaster / Emergency context</div>
             <button v-if="activeFilterLabels.event" type="button" class="clear-filter" title="Clear the event filter" @click="clearFilter('event')">
@@ -369,6 +403,26 @@ async function exportSnapshot(kind) {
             No projects are linked to a disaster event under the current filters.
             Set one in the project form’s “Disaster / Emergency context” field.
           </div>
+        </div>
+      </div>
+
+      <!-- Row 4: For Whom + latest updates (mirrors the public page) -->
+      <div class="grid-2" style="margin-bottom: 16px">
+        <div class="card">
+          <div class="title-row">
+            <div class="card-title">Who is targeted — demographics</div>
+            <button v-if="activeFilterLabels.demographic" type="button" class="clear-filter" title="Clear the demographic filter" @click="clearFilter('demographic')">
+              <span class="cf-label">{{ activeFilterLabels.demographic }}</span> <span class="cf-x">✕</span>
+            </button>
+          </div>
+          <div class="card-sub">For Whom — targeted beneficiaries by disaggregation category · click to filter</div>
+          <HeadlineGroups :demographics="s.demographics" />
+          <DemographicsCard
+            :demographics="s.demographics"
+            clickable
+            :activeKey="dash.filters.demographic"
+            @select="onDemographicSelect"
+          />
         </div>
 
         <div v-if="s.recentProjects && s.recentProjects.length" class="card">
@@ -423,10 +477,15 @@ async function exportSnapshot(kind) {
 </template>
 
 <style scoped>
-/* Right column of the map row: two stacked cards fill the full row height. */
-.dash-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.dash-stack > .card { margin-top: 0; }
-.dash-stack > .card:last-child { flex: 1 1 auto; }
+/* Map left, companion chart right — same split as the public page. */
+.map-row { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: stretch; }
+.map-row > .card { margin-top: 0; min-width: 0; }
+@media (max-width: 1000px) { .map-row { grid-template-columns: 1fr; } }
+
+/* Stacked donut card: the two charts share the column's full height. */
+.flex-card { display: flex; flex-direction: column; }
+.spread { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 12px; }
+.card-divider { border: none; border-top: 1px solid var(--border, #e3e8ef); margin: 0; }
 
 /* Ranked "most active areas" rows — whole row is a click target. */
 .area-row {

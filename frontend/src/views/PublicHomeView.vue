@@ -171,6 +171,29 @@ function toggleLocation(locationId) {
   fetchSummary();
 }
 
+// Per-card "clear filter" chips (as internal): resolve the applied ids to names
+// from the option lists captured on first load.
+function clearFilter(key) {
+  filters.value[key] = key === 'location' ? [] : '';
+  fetchSummary();
+}
+const byId = (list, id) => list.find((x) => String(x._id) === String(id));
+const activeFilterLabels = computed(() => ({
+  sector: filters.value.sector ? byId(options.value.sectors, filters.value.sector)?.name || 'sector' : '',
+  status: filters.value.status ? cap(filters.value.status) : '',
+  event: filters.value.event ? byId(options.value.events, filters.value.event)?.name || 'event' : '',
+  organization: filters.value.organization
+    ? (byId(options.value.organizations, filters.value.organization) || {}).acronym ||
+      (byId(options.value.organizations, filters.value.organization) || {}).name ||
+      'organization'
+    : '',
+  // One chip per selected area — ✕ removes just that area.
+  locations: filters.value.location.map((id) => ({
+    id,
+    name: byId(options.value.locations, id)?.name || 'area',
+  })),
+}));
+
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
@@ -247,8 +270,8 @@ function exportOverviewXlsx() {
           </span>
           <div>
             <h1>CIVIL SOCIETY COORDINATION PLATFORM</h1>
-            <div class="hero-dept">Coordinated by Department of Risk and Disaster Management; and DICT</div>
-            <div class="hero-sub">5Ws — Who does What, Where, When, for Whom</div>
+            <div class="hero-dept">5Ws — Who does What, Where, When, for Whom</div>
+            <div class="hero-sub">Coordinated by Department of Risk and Disaster Management; and DICT</div>
           </div>
           <div class="hero-actions">
             <router-link class="hero-link" :to="{ name: 'directory' }">Organization Directory</router-link>
@@ -370,6 +393,18 @@ function exportOverviewXlsx() {
                 <div class="card-title">Where work is happening</div>
                 <div class="card-sub">Click a {{ unitLabel }} for details, drill down, or filter the page · the “Organizations” layer shows member offices</div>
               </div>
+              <div v-if="activeFilterLabels.locations.length" class="chip-set">
+                <button
+                  v-for="l in activeFilterLabels.locations"
+                  :key="l.id"
+                  type="button"
+                  class="clear-filter"
+                  :title="`Remove the ${l.name} filter`"
+                  @click="toggleLocation(l.id)"
+                >
+                  <span class="cf-label">{{ l.name }}</span> <span class="cf-x">✕</span>
+                </button>
+              </div>
             </div>
             <ActivityMap
               :byLevel="s.byLevel"
@@ -406,7 +441,12 @@ function exportOverviewXlsx() {
         <!-- Row 1: seams align — the donut card stretches to the sector card's height -->
         <div class="two-col">
           <div class="card">
-            <div class="card-title">What — projects by sector</div>
+            <div class="title-row">
+              <div class="card-title">What — projects by sector</div>
+              <button v-if="activeFilterLabels.sector" type="button" class="clear-filter" title="Clear the sector filter" @click="clearFilter('sector')">
+                <span class="cf-label">{{ activeFilterLabels.sector }}</span> <span class="cf-x">✕</span>
+              </button>
+            </div>
             <div class="card-sub">A project counts under every sector its activities report · click a bar to filter</div>
             <BarChart
               :labels="sectorData.labels"
@@ -423,7 +463,12 @@ function exportOverviewXlsx() {
           <div class="card flex-card">
             <div class="spread">
               <div>
-                <div class="card-title">When — project status</div>
+                <div class="title-row">
+                  <div class="card-title">When — project status</div>
+                  <button v-if="activeFilterLabels.status" type="button" class="clear-filter" title="Clear the status filter" @click="clearFilter('status')">
+                    <span class="cf-label">{{ activeFilterLabels.status }}</span> <span class="cf-x">✕</span>
+                  </button>
+                </div>
                 <div class="card-sub">Click a slice to filter</div>
                 <DonutChart
                   :items="statusItems"
@@ -446,7 +491,21 @@ function exportOverviewXlsx() {
         <!-- Row 2: ranked areas + emergency context (mirrors the internal dashboard) -->
         <div class="two-col">
           <div class="card">
-            <div class="card-title">Most active {{ unitLabel }}s</div>
+            <div class="title-row">
+              <div class="card-title">Most active {{ unitLabel }}s</div>
+              <div v-if="activeFilterLabels.locations.length" class="chip-set">
+                <button
+                  v-for="l in activeFilterLabels.locations"
+                  :key="l.id"
+                  type="button"
+                  class="clear-filter"
+                  :title="`Remove the ${l.name} filter`"
+                  @click="toggleLocation(l.id)"
+                >
+                  <span class="cf-label">{{ l.name }}</span> <span class="cf-x">✕</span>
+                </button>
+              </div>
+            </div>
             <div class="card-sub">Where — ranked by projects, click to filter the page</div>
             <div v-if="!topAreas.length" class="empty" style="padding: 24px 12px">
               No located activities under the current filters.
@@ -470,7 +529,12 @@ function exportOverviewXlsx() {
           </div>
 
           <div class="card">
-            <div class="card-title">Disaster / Emergency context</div>
+            <div class="title-row">
+              <div class="card-title">Disaster / Emergency context</div>
+              <button v-if="activeFilterLabels.event" type="button" class="clear-filter" title="Clear the emergency filter" @click="clearFilter('event')">
+                <span class="cf-label">{{ activeFilterLabels.event }}</span> <span class="cf-x">✕</span>
+              </button>
+            </div>
             <div class="card-sub">Projects linked to registered emergencies</div>
             <template v-if="s.byEvent.length">
               <BarChart :labels="eventData.labels" :values="eventData.values" horizontal :height="Math.max(120, s.byEvent.length * 44)" />
@@ -500,7 +564,12 @@ function exportOverviewXlsx() {
           </div>
 
           <div class="card">
-            <div class="card-title">Latest updates</div>
+            <div class="title-row">
+              <div class="card-title">Latest updates</div>
+              <button v-if="activeFilterLabels.organization" type="button" class="clear-filter" title="Clear the organization filter" @click="clearFilter('organization')">
+                <span class="cf-label">{{ activeFilterLabels.organization }}</span> <span class="cf-x">✕</span>
+              </button>
+            </div>
             <div class="card-sub">Most recently added or edited projects in the current selection</div>
             <div v-if="!s.recentProjects?.length" class="empty" style="padding: 20px 12px">
               No projects reported yet.
@@ -602,16 +671,16 @@ function exportOverviewXlsx() {
    sits beneath them in smaller type. Pure white with opacity steps — tinted
    grays go muddy on the dark gradient. */
 .hero-dept {
-  color: rgba(255, 255, 255, 0.92); font-size: clamp(14px, 1.7vw, 17px);
+  color: rgba(255, 255, 255, 0.92); font-size: clamp(12.5px, 1.4vw, 14.5px);
   font-weight: 700; letter-spacing: 0.2px; margin-bottom: 4px;
 }
 .hero h1 {
-  color: #fff; font-size: clamp(22px, 3vw, 32px); line-height: 1.15;
+  color: #fff; font-size: clamp(18px, 2.4vw, 25px); line-height: 1.15;
   margin: 0 0 4px; letter-spacing: 0.6px;
 }
 .hero-sub {
-  color: rgba(255, 255, 255, 0.75); font-size: 12px; font-weight: 700;
-  letter-spacing: 1.6px; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.3px;
 }
 @media (max-width: 600px) { .hero-logo { width: 52px; height: 52px; } }
 
@@ -684,6 +753,21 @@ function exportOverviewXlsx() {
 .fb-date input { flex: 1; min-width: 0; font-size: 12px; }
 .fb-locations { min-width: 0; }
 .fb-locations :deep(select) { max-width: none; font-size: 12.5px; width: 100%; }
+
+/* Per-card "clear filter" chip — shows the applied value, ✕ clears it (as internal). */
+.title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.chip-set { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 60%; }
+.clear-filter {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 100%; padding: 2px 8px; border: none; border-radius: 999px;
+  background: rgba(29, 95, 173, 0.1); color: var(--blue-600, #1d5fad);
+  font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; flex: none;
+}
+.title-row > .clear-filter { max-width: 55%; }
+.clear-filter .cf-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.clear-filter .cf-x { font-size: 10px; flex: none; }
+.clear-filter:hover { background: rgba(29, 95, 173, 0.18); }
 
 /* Ranked "most active areas" rows — whole row is a click target (as internal). */
 .area-row {
