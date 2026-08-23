@@ -106,6 +106,32 @@ function toggleOrganization(org) {
   dash.fetchSummary();
 }
 
+// Per-card "clear filter" chips: each filterable card shows the applied value
+// with an ✕ while its filter is active.
+function clearFilter(key) {
+  dash.filters[key] = '';
+  dash.fetchSummary();
+}
+const byId = (list, id) => list.find((x) => String(x._id) === String(id));
+const activeFilterLabels = computed(() => ({
+  sector: dash.filters.sector ? byId(lookups.sectors, dash.filters.sector)?.name || 'sector' : '',
+  status: dash.filters.status ? cap(dash.filters.status) : '',
+  event: dash.filters.event ? byId(lookups.events, dash.filters.event)?.name || 'event' : '',
+  location: dash.filters.location ? byId(lookups.locations, dash.filters.location)?.name || 'area' : '',
+  organization: dash.filters.organization
+    ? (byId(lookups.organizations, dash.filters.organization) || {}).acronym ||
+      (byId(lookups.organizations, dash.filters.organization) || {}).name || 'organization'
+    : '',
+  demographic: !dash.filters.demographic
+    ? ''
+    : dash.filters.demographic === 'female'
+      ? 'Female (group split)'
+      : dash.filters.demographic === 'male'
+        ? 'Male (group split)'
+        : lookups.disaggregations.find((c) => c.key === dash.filters.demographic)?.label ||
+          dash.filters.demographic,
+}));
+
 // Stat tiles: Who/What tiles open their registers; coverage brings the map into view.
 const mapCard = ref(null);
 function onStatSelect(key) {
@@ -186,7 +212,12 @@ async function exportSnapshot(kind) {
            so the right side fills its full height — no dead half-column. -->
       <div class="grid-2" style="margin-bottom: 16px">
         <div class="card" ref="mapCard">
-          <div class="card-title">Coverage map</div>
+          <div class="title-row">
+            <div class="card-title">Coverage map</div>
+            <button v-if="activeFilterLabels.location" type="button" class="clear-filter" title="Clear the location filter" @click="clearFilter('location')">
+              <span class="cf-label">{{ activeFilterLabels.location }}</span> <span class="cf-x">✕</span>
+            </button>
+          </div>
           <div class="card-sub">Where — click an area for details, drill down level by level, or switch the metric</div>
           <ActivityMap
             :byLevel="s.byLevel"
@@ -198,7 +229,12 @@ async function exportSnapshot(kind) {
         </div>
         <div class="dash-stack">
           <div class="card">
-            <div class="card-title">Projects by status</div>
+            <div class="title-row">
+              <div class="card-title">Projects by status</div>
+              <button v-if="activeFilterLabels.status" type="button" class="clear-filter" title="Clear the status filter" @click="clearFilter('status')">
+                <span class="cf-label">{{ activeFilterLabels.status }}</span> <span class="cf-x">✕</span>
+              </button>
+            </div>
             <div class="card-sub">When — share of projects in each state · click to filter</div>
             <DonutChart
               :items="statusItems"
@@ -210,7 +246,12 @@ async function exportSnapshot(kind) {
             />
           </div>
           <div class="card">
-            <div class="card-title">Who is targeted — demographics</div>
+            <div class="title-row">
+              <div class="card-title">Who is targeted — demographics</div>
+              <button v-if="activeFilterLabels.demographic" type="button" class="clear-filter" title="Clear the demographic filter" @click="clearFilter('demographic')">
+                <span class="cf-label">{{ activeFilterLabels.demographic }}</span> <span class="cf-x">✕</span>
+              </button>
+            </div>
             <div class="card-sub">For Whom — targeted beneficiaries by disaggregation category · click to filter</div>
             <DemographicsCard
               :demographics="s.demographics"
@@ -225,7 +266,12 @@ async function exportSnapshot(kind) {
       <!-- Row 2: two ranked-bar cards of similar shape. -->
       <div class="grid-2" style="margin-bottom: 16px">
         <div class="card">
-          <div class="card-title">Projects by sector</div>
+          <div class="title-row">
+            <div class="card-title">Projects by sector</div>
+            <button v-if="activeFilterLabels.sector" type="button" class="clear-filter" title="Clear the sector filter" @click="clearFilter('sector')">
+              <span class="cf-label">{{ activeFilterLabels.sector }}</span> <span class="cf-x">✕</span>
+            </button>
+          </div>
           <div class="card-sub">What — a project counts under every sector its activities report · click a bar to filter</div>
           <BarChart
             :labels="sectorData.labels"
@@ -255,7 +301,12 @@ async function exportSnapshot(kind) {
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Most active {{ unitLabel.toLowerCase() }}s</div>
+          <div class="title-row">
+            <div class="card-title">Most active {{ unitLabel.toLowerCase() }}s</div>
+            <button v-if="activeFilterLabels.location" type="button" class="clear-filter" title="Clear the location filter" @click="clearFilter('location')">
+              <span class="cf-label">{{ activeFilterLabels.location }}</span> <span class="cf-x">✕</span>
+            </button>
+          </div>
           <div class="card-sub">Where — ranked by projects, click to filter the dashboard</div>
           <div v-if="!topAreas.length" class="empty" style="padding: 24px 12px">
             No located activities under the current filters.
@@ -282,7 +333,12 @@ async function exportSnapshot(kind) {
       <!-- Row 3: events pairs with latest updates; spans the row when alone. -->
       <div class="grid-2" style="margin-bottom: 16px">
         <div class="card" :style="s.recentProjects && s.recentProjects.length ? '' : 'grid-column: 1 / -1'">
-          <div class="card-title">Disaster / Emergency context</div>
+          <div class="title-row">
+            <div class="card-title">Disaster / Emergency context</div>
+            <button v-if="activeFilterLabels.event" type="button" class="clear-filter" title="Clear the event filter" @click="clearFilter('event')">
+              <span class="cf-label">{{ activeFilterLabels.event }}</span> <span class="cf-x">✕</span>
+            </button>
+          </div>
           <div class="card-sub">Projects linked to registered emergencies · click to filter</div>
           <template v-if="s.byEvent.length">
             <BarChart
@@ -316,7 +372,12 @@ async function exportSnapshot(kind) {
         </div>
 
         <div v-if="s.recentProjects && s.recentProjects.length" class="card">
-        <div class="card-title">Latest updates</div>
+        <div class="title-row">
+          <div class="card-title">Latest updates</div>
+          <button v-if="activeFilterLabels.organization" type="button" class="clear-filter" title="Clear the organization filter" @click="clearFilter('organization')">
+            <span class="cf-label">{{ activeFilterLabels.organization }}</span> <span class="cf-x">✕</span>
+          </button>
+        </div>
         <div class="card-sub">Most recently added or edited projects · click an organization or status to filter</div>
         <table class="data" style="margin-top: 6px">
           <thead>
@@ -418,4 +479,17 @@ async function exportSnapshot(kind) {
 .org-link:hover { color: var(--blue-600, #1d5fad); text-decoration: underline; text-underline-offset: 2px; }
 .badge-btn { cursor: pointer; font-family: inherit; border: none; }
 .badge-btn:hover { filter: brightness(0.95); }
+
+/* Per-card "clear filter" chip — shows the applied value, ✕ clears it. */
+.title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.clear-filter {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 55%; padding: 2px 8px; border: none; border-radius: 999px;
+  background: rgba(29, 95, 173, 0.1); color: var(--blue-600, #1d5fad);
+  font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; flex: none;
+}
+.clear-filter .cf-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.clear-filter .cf-x { font-size: 10px; flex: none; }
+.clear-filter:hover { background: rgba(29, 95, 173, 0.18); }
 </style>

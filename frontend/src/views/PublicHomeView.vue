@@ -246,8 +246,8 @@ function exportOverviewXlsx() {
             <img :src="drdmLogo" alt="Department of Risk and Disaster Management and DICT, Seychelles" />
           </span>
           <div>
-            <div class="hero-dept">Department of Risk and Disaster Management and DICT, Seychelles</div>
             <h1>CIVIL SOCIETY COORDINATION PLATFORM</h1>
+            <div class="hero-dept">Coordinated by Department of Risk and Disaster Management; and DICT</div>
             <div class="hero-sub">5Ws — Who does What, Where, When, for Whom</div>
           </div>
           <div class="hero-actions">
