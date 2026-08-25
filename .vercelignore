@@ -1,0 +1,5 @@
+docs
+backend/seed/*.xlsx
+*.xlsx
+!backend/seed/data
+.claude

@@ -1,0 +1,11 @@
+{
+  "name": "5ws-seychelles",
+  "version": "1.0.0",
+  "private": true,
+  "description": "5Ws Seychelles — Civil Society Coordination Platform (Vue frontend + Express API, deployed on Vercel)",
+  "scripts": {
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  }
+}
